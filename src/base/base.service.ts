@@ -94,7 +94,6 @@ export class BaseService {
             `INSERT INTO docs (doc) VALUES ('${JSON.stringify(doc)}')`,
             "SELECT doc FROM docs",
         ];
-          
         try {
             await cockDBclient.connect();
             for (let n = 0; n < statements.length; n++) {
