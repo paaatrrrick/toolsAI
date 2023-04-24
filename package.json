@@ -29,6 +29,7 @@
     "langchain": "^0.0.63",
     "mongoose": "^7.0.4",
     "openai": "^3.2.1",
+    "pg": "^8.10.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.5.5",
     "weaviate-client": "^2.14.5"

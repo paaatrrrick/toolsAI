@@ -9,6 +9,7 @@ import { baseConstants } from '../constants';
 import { apiDocs, checkIfDocs } from '../types/baseTypes';
 import { Document } from "langchain/document";
 import axios from 'axios';
+const { Client } = require("pg");
 
 
 
@@ -83,6 +84,27 @@ export class BaseService {
             }
         }
         await this.store.addDocuments([doc]);
+
+        const cockDBclient = new Client({
+            connectionString: process.env.cock_db_url,
+            application_name: "$ tools-nest-server"
+          });
+        const statements = [
+            "CREATE TABLE IF NOT EXISTS docs (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), doc JSONB)",
+            `INSERT INTO docs (doc) VALUES ('${JSON.stringify(doc)}')`,
+            "SELECT doc FROM docs",
+        ];
+        try {
+            await cockDBclient.connect();
+            for (let n = 0; n < statements.length; n++) {
+                let result = await cockDBclient.query(statements[n]);
+                if (result.rows[0]) { console.log(result.rows[0].doc); }
+            }
+            await cockDBclient.end();
+        }   catch (err) {
+                console.log(`error connecting to cockDB: ${err}`);
+            }
+      
         return 'added new doc';
     }
 
