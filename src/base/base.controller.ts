@@ -8,23 +8,17 @@ export class BaseController {
     constructor(private readonly baseService: BaseService) { }
     @Post('base')
     async default(@Req() request: Request): Promise<any> {
-        console.log('at base');
-        const res = await this.baseService.base(request.body.prompt);
-        return res;
+        return await this.baseService.base(request.body.prompt);
     }
 
     @Post('add')
-    add(@Req() request: Request): string {
-        console.log('adding')
-        console.log(request.body);
-        const res = this.baseService.addNewDoc(request.body);
-        return 'yo'
-        // return res;
+    async add(@Req() request: Request): Promise<string> {
+        return await this.baseService.addNewDoc(request.body);
+
     }
 
     @Get('test')
     test(): string {
-        console.log('adding')
         this.baseService.test();
         return 'done'
     }
