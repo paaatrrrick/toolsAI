@@ -1,14 +1,10 @@
 export interface apiDocs {
-    internal?: boolean;
-    name?: string | boolean;
-    docs: string;
-    type?: string;
-    headers?: any | boolean;
-    url: string;
-    body?: any | boolean;
-    queryParameters?: any;
-    requestFormat?: string | boolean;
-    responseFormat?: string | boolean;
+    name: string;
+    description: string;
+    openapi: string;
+    baseurl: string;
+    auth?: any;
+    websiteUrl: string;
 }
 
 export interface checkIfDocs {

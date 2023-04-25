@@ -10,6 +10,7 @@ import { StructuredOutputParser } from "langchain/output_parsers";
 import { baseConstants } from '../constants';
 import { apiDocs, checkIfDocs } from '../types/baseTypes';
 import axios from 'axios';
+import { json } from "stream/consumers";
 const { Client } = require("pg");
 
 
@@ -29,7 +30,6 @@ export class BaseService {
     constructor() {
         this.setUp();
     }
-
     private async setUp(): Promise<void> {
         this.client = (weaviate as any).client({
             scheme: process.env.WEAVIATE_SCHEME,
@@ -38,20 +38,15 @@ export class BaseService {
                 process.env.WEAVIATE_API_KEY
             ),
         });
-
         this.store = await WeaviateStore.fromExistingIndex(new OpenAIEmbeddings(), {
             client: this.client,
             indexName: "Toolllm",
             metadataKeys: ["notid"],
         });
-
         this.cockDBclient = new Client({
             connectionString: process.env.cock_db_url,
             application_name: "$ tools-nest-server"
         });
-
-
-
         // await WeaviateStore.fromTexts(
         //     ["find me a kanye quotes", "what would kanye say"],
         //     [{ notid: "7196a34f-39b5-4606-85ed-78bec985551d" }, { notid: "7196a34f-39b5-4606-85ed-78bec985551d" }],
@@ -68,46 +63,63 @@ export class BaseService {
     }
 
 
+    async deleteDocsTable(): Promise<void> {
+        const cockDBclient = new Client({
+            connectionString: process.env.cock_db_url,
+            application_name: "$ tools-nest-server"
+        });
+        const query = "DROP TABLE IF EXISTS docs";
+        try {
+            await cockDBclient.connect();
+            await cockDBclient.query(query);
+            console.log("docs table deleted successfully");
+        } catch (err) {
+            console.log(`error deleting docs table: ${err}`);
+        } finally {
+            await cockDBclient.end();
+        }
+    }
+
+
     async public addNewDoc(params: apiDocs): Promise<string> {
         const doc = {
-            internal: (params.internal) ? params.internal : false,
-            name: (params.name) ? params.name : false,
-            docs: params.docs,
-            type: (params.type) ? params.type : "GET",
-            headers: (params.headers) ? params.headers : false,
-            url: params.url,
-            body: (params.body) ? params.body : false,
-            queryParameters: (params.queryParameters) ? params.queryParameters : false,
-            requestFormat: (params.requestFormat) ? params.requestFormat : "application/json",
-            responseFormat: (params.responseFormat) ? params.responseFormat : "application/json",
-        }
-
+            name: params.name,
+            description: params.description,
+            openapi: params.openapi,
+            baseurl: params.baseurl,
+            websiteUrl: params.websiteUrl,
+            auth: (params.auth) ? params.auth : false,
+        };
+        console.log(doc);
+        console.log(JSON.stringify(doc))
         const statements = [
             "CREATE TABLE IF NOT EXISTS docs (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), doc JSONB)",
             `INSERT INTO docs (doc) VALUES ('${JSON.stringify(doc)}')`,
             "SELECT id FROM docs ORDER BY id DESC LIMIT 1",
         ];
-        try {
-            await this.cockDBclient.connect();
-            for (let n = 0; n < statements.length; n++) {
-                let result = await this.cockDBclient.query(statements[n]);
-                if (result.rows[0]) {
-                    console.log('added to cockDB');
-                    console.log(result.rows[0].id)
-                    await this.store.addDocuments([{
-                        pageContent: params.docs,
-                        metadata: {
-                            id: result.rows[0].id,
-                        }
-                    }]);
-                }
+        // try {
+        await this.cockDBclient.connect();
+        for (let n = 0; n < statements.length; n++) {
+            let result = await this.cockDBclient.query(statements[n]);
+            if (result.rows[0]) {
+                console.log('added to cockDB');
+                console.log(result.rows[0].id)
+                await this.store.addDocuments([{
+                    pageContent: params.description,
+                    metadata: {
+                        id: result.rows[0].id,
+                    }
+                }]);
+                const doc = await this.getDocById(result.rows[0].id);
+                console.log('DOC: ', doc);
             }
-            await this.cockDBclient.end();
-        } catch (err) {
-            console.log(`error connecting to cockDB: ${err}`);
         }
-
+        await this.cockDBclient.end();
         return 'added new doc';
+        // } catch (err) {
+        //     console.log(`error connecting to cockDB: ${err}`);
+        //     return `Error adding: ${err}`
+        // }
     }
 
     private async getDocById(id: string): Promise<any> {
@@ -139,8 +151,20 @@ export class BaseService {
             return 'No docs found';
         }
         const apiDocs = await this.getDocById(doc.cockRoachID);
-        const output = await this.matchQueryAndDocsToApi(query, apiDocs);
-        return output;
+        const json = await this.matchQueryAndDocsToApi(query, apiDocs);
+
+        if (json["OUTPUT"]) {
+            if (json["OUTPUT"]["LLM-TOOLS-FORMATTING-ERROR"]) {
+                return { type: "internal-error", output: json["LLM-TOOLS-FORMATTING-ERROR"] };
+            }
+            if (json["OUTPUT"]["LLM-TOOLS-ERROR"]) {
+                return { type: "missing-data", output: json["LLM-TOOLS-ERROR"] };
+            }
+            const ouput = await this.makeApiCall(json["OUTPUT"]);
+            return { type: "success", output: ouput };
+        } else {
+            return { type: "internal-error", output: "Unable to correctly format" };
+        }
     }
 
 
@@ -152,120 +176,77 @@ export class BaseService {
         return { docFoundStatus: baseConstants.docFound, cockRoachID: results[0][0].metadata.notid };
     }
 
-    private async matchQueryAndDocsToApi(query: string, apiDocs: apiDocs): Promise<any> {
-        var namesAndDescription = {}
-        if (apiDocs.queryParameters) {
-            namesAndDescription[`url`] = `updated url with query parameters, leave blank if not all query parameters are found. The current url is ${apiDocs.url}`;
+    private async matchQueryAndDocsToApi(query: string, apiDocs: apiDocs): Promise<string> {
+        console.log('hit');
+        console.log(query);
+        console.log(apiDocs);
+        const format = {
+            OUTPUT: "A valid JSON string for this query to reach the api. Includes all values to make the request Ex:{method: 'post','url': 'https://example.com/api','headers': {'Content-Type': 'application/json'},'data': {'foo': 'bar'}}. If needed information is missing, return: {'LLM-TOOLS-ERROR': {json string with missing data}}",
         }
-        if (apiDocs.body) {
-            for (var key in apiDocs.body) {
-                namesAndDescription[`body-${key}`] = `Corresponding value for ${key} in the body of the api call, leave blank if the value is not found`
-            }
-        }
-        if (apiDocs.headers) {
-            for (var key in apiDocs.headers) {
-                if (apiDocs.headers[key].includes('{')) {
-                    namesAndDescription[`headers-${key}`] = `Corresponding value for ${key} in the header of the api call, leave blank if the value is not found`
-                }
-            }
-        }
-
-        var condensedAPI = {
-            url: apiDocs.url,
-            headers: apiDocs.headers,
-            body: (apiDocs.body && apiDocs.body !== "null" && apiDocs.body !== "false") ? apiDocs.body : {},
-            type: apiDocs.type,
-            headers: (apiDocs.headers && apiDocs.headers !== "null" && apiDocs.headers !== "false") ? apiDocs.headers : {},
-        }
-
-
-        if (Object.keys(namesAndDescription).length === 0) {
-            return { data: await this.makeApiCall(condensedAPI) };
-        }
-
-        const parser = StructuredOutputParser.fromNamesAndDescriptions(namesAndDescription);
+        const parser = StructuredOutputParser.fromNamesAndDescriptions(format);
         const formatInstructions = parser.getFormatInstructions();
+        console.log(formatInstructions);
         const prompt = new PromptTemplate({
             template:
-                "Fill out the questions for this api call as best as possible given the documentation of the API and a query containing the users information.\n{format_instructions}\n{docs}\n{query}",
-            inputVariables: ["docs", "query"],
+                "Create a valid JSON string to query this api given its description, endpoint url, openapi docs, and an incoming data to it. \n{format_instructions}\n{description}\n{url}\n{openapi}\n{data}",
+            inputVariables: ["description", "url", "openapi", "data"],
             partialVariables: { format_instructions: formatInstructions },
         });
         const model = new OpenAI({ temperature: 0 });
-
         const input = await prompt.format({
-            docs: apiDocs.docs,
-            query: query,
+            description: apiDocs.description,
+            url: apiDocs.baseurl,
+            openapi: apiDocs.docs,
+            data: query,
         });
         const response = await model.call(input);
-        const output = await parser.parse(response);
-        const missingData = []
-        for (var key in output) {
-            if (key.substring(0, 8) === "headers-") {
-                if (output[key] === "" || output[key] === "null" || output[key] === "false") {
-                    missingData.push(`Missing header value for: ${key.substring(8)}`);
-                }
-                condensedAPI.headers[key.substring(8)] = output[key];
-            }
-            else if (key.substring(0, 5) === "body-") {
-                if (output[key] === "" || output[key] === "null" || output[key] === "false") {
-                    missingData.push(`Missing body value for: ${key.substring(5)}`);
-                }
-                condensedAPI.body[key.substring(5)] = output[key];
-            }
-            else if (key === "url") {
-                if (output[key] === "" || output[key] === "null" || output[key] === "false") {
-                    missingData.push(`All query paramaters for ${apiDocs.url} are missing}`);
-                }
-                condensedAPI.url = output[key];
-            }
-        }
-        console.log(missingData)
+        function removeFormatting(inputString) {
+            const startPattern = '```json';
+            const endPattern = '```';
 
-        if (missingData.length > 0) {
-            return { missingdata: missingData, data: undefined };
-        }
-        for (var key in condensedAPI.body) {
-            if (condensedAPI.body[key].includes('{')) {
-                condensedAPI.body[key] = JSON.parse(condensedAPI.body[key]);
+            let startIndex = inputString.indexOf(startPattern);
+            let endIndex = inputString.lastIndexOf(endPattern);
+            if (startIndex !== -1 && endIndex !== -1) {
+                let cleanedString = inputString.slice(startIndex + startPattern.length, endIndex);
+                return cleanedString.trim();
             }
+            return inputString;
         }
-        console.log(condensedAPI)
-        return { data: await this.makeApiCall(condensedAPI) };
+        try {
+            const cleanStirng = removeFormatting(response);
+            console.log(cleanStirng);
+            const json = JSON.parse(cleanStirng);
+            console.log(json);
+            return json
+        } catch (err) {
+            return { "LLM-TOOLS-FORMATTING-ERROR": { "error": "error parsing json" } };
+        }
     }
 
 
-    private async makeApiCall(condensedAPI: any): Promise<any> {
-        if (condensedAPI.type === 'POST') {
-            const response = await axios.post(condensedAPI.url, body, { headers: condensedAPI.headers });
-            const data = await response.data;
-            return data;
-        } else {
-            const response = await axios.get(condensedAPI.url);
-            const data = await response.data;
-            return data;
-        }
+    private async makeApiCall(apiJSON: any): Promise<any> {
+        const response = await axios(apiJSON);
+        const data = await response.data;
+        return data;
     }
 
     public async test(): Promise<any> {
-        // this.matchQueryParamsToDocParams("what is the history of mexico", {
-        //     internal: false,
-        //     name: "kenya history",
-        //     docs: "the access header is 123, the year is 2022, the name is yooo, age is 5",
-        //     type: "GET",
-        //     url: "https://api.kanye.rest/{year}",
-        //     queryParameters: "true",
-        //     body: {
-        //         "name": "test name",
-        //         "age": "test age",
-        //     },
-        //     headers: {
-        //         "Content-Type": "application/json",
-        //         "Accept": "application/json",
-        //         "access-headers": "{access-headers}"
-        //     },
-
-        // })
+        await this.deleteDocsTable();
+        // const myStr = new String("openapi: 3.0.1\ninfo:\n\ttitle: TODO Plugin\n\tdescription: A plugin that allows the user to create and manage a TODO list using ChatGPT.\n\tversion: 'v1'\nservers:\n\t- url: http://localhost:3333\npaths:\n\t/todos{unique-api-key}:\n\t\tget:\n\t\t\toperationId: getTodos\n\t\t\tsummary: Get the list of todos\n\t\t\tresponses:\n\t\t\t\t200:\n\t\t\t\t\tdescription: OK\n\t\t\t\t\tcontent:\n\t\t\t\t\t\tapplication/json:\n\t\t\t\t\t\t\tschema:\n\t\t\t\t\t\t\t\t$ref: '#/components/schemas/getTodosResponse");
+        // console.log(myStr.toString());
+        // const data = await this.matchQueryAndDocsToApi("what are my todos", {
+        //     "baseurl": "http://localhost:3333/openapi/",
+        //     "type": "GET",
+        //     "openapi": myStr.toString(),
+        //     "desciprtion": "Get all of the todos from the server"
+        // });
+        // console.log(data);
+        // console.log(data["OUTPUT"]);
+        // await this.makeApiCall(data["OUTPUT"]);
+        // // var obj = '{"method": post,url: https://example.com/api,headers: {Content-Type: application/json},data: {foo: bar, baz: 5}}';
+        // // var obj = '{"method": "post", "url": "https://example.com/api", "headers": { "Content-Type": "application/json" }, "data": { "foo": "bar", "baz": 5, "nerd": false, "cheese": {"nerd": 10, "adsf": false} } }';
+        // // console.log(obj);
+        // // console.log(JSON.parse(obj));
         return 'test';
     }
 }

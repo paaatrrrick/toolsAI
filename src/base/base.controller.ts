@@ -12,9 +12,10 @@ export class BaseController {
     }
 
     @Post('add')
-    async add(@Req() request: Request): Promise<string> {
-        return await this.baseService.addNewDoc(request.body);
-
+    async add(@Req() request: Request): Promise<any> {
+        console.log(request.body);
+        const output = await this.baseService.addNewDoc(request.body);
+        return { request: request.body, output };
     }
 
     @Get('test')
