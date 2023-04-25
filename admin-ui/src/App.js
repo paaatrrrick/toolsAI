@@ -9,7 +9,10 @@ function App() {
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [response, setResponse] = useState('');
 
-  const handleSubmit = async (event) => {
+  const [query, setQuery] = useState('');
+  const [queryResponse, setQueryResponse] = useState('');
+
+  const handleSubmitAddAPI = async (event) => {
     event.preventDefault();
 
     const data = {
@@ -31,17 +34,29 @@ function App() {
     const responseData = await response.text();
 
     setResponse(responseData);
-    // setName('');
-    // setDescription('');
-    // setBaseurl('');
-    // setAuth('');
-    // setWebsiteUrl('');
-    // setOpenapi('');
+    setName('');
+    setDescription('');
+    setBaseurl('');
+    setAuth('');
+    setWebsiteUrl('');
+    setOpenapi('');
   };
 
+  const handleSubmitQueryAPI = async () => {
+    const requestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: query,
+      }),
+    };
+    const response = await fetch('http://localhost:3000/base', requestOptions);
+    const responseData = await response.text();
+    setQueryResponse(responseData);
+  }
   return (
     <div style={{ display: 'flex', flexDirection: 'row' }}>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', width: '1500px', marginLeft: "40px" }}>
+      <form onSubmit={handleSubmitAddAPI} style={{ display: 'flex', flexDirection: 'column', width: '1200px', marginLeft: "40px" }}>
         <h1>Add API</h1>
         <label>The name of the api endpoint:</label>
         <input value={name} onChange={(e) => setName(e.target.value)} required />
@@ -63,9 +78,18 @@ function App() {
 
         <button type="submit" >Submit</button>
       </form >
-      <div style={{ marginLeft: "60px" }}>
-        <h3>Response:</h3>
-        <p style={{ maxWidth: '500px', fontSize: "20px" }}>{response}</p>
+      <div style={{ marginLeft: "60px", height: '80vh', display: "flex", flexDirection: "column", justifyContent: "space-around" }}>
+        <div>
+          <h3>Response:</h3>
+          <p style={{ maxWidth: '500px', fontSize: "20px" }}>{response}</p>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around" }}>
+          <h3>Run Query</h3>
+          <textarea style={{ height: '200px', width: '200px' }} value={query} onChange={(e) => setQuery(e.target.value)} />
+          <button onClick={handleSubmitQueryAPI}>Submit</button>
+          <p style={{ maxWidth: '500px', fontSize: "20px" }}>{queryResponse}</p>
+
+        </div>
       </div>
     </div >
   );

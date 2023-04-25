@@ -40,7 +40,7 @@ export class BaseService {
         });
         this.store = await WeaviateStore.fromExistingIndex(new OpenAIEmbeddings(), {
             client: this.client,
-            indexName: "Toolllm",
+            indexName: "Toollm",
             metadataKeys: ["notid"],
         });
         this.cockDBclient = new Client({
@@ -48,18 +48,19 @@ export class BaseService {
             application_name: "$ tools-nest-server"
         });
         // await WeaviateStore.fromTexts(
-        //     ["find me a kanye quotes", "what would kanye say"],
-        //     [{ notid: "7196a34f-39b5-4606-85ed-78bec985551d" }, { notid: "7196a34f-39b5-4606-85ed-78bec985551d" }],
+        //     ["A sentiment analysis tool that takes in a string a returns three labels ranging from 0-1 on \"Labels: 0 -> Negative; 1 -> Neutral; 2 -> Positive\". This is a RoBERTa-base model trained on ~124M tweets from January 2018 to December 2021, and fine tuned for sentiment analysis with the TweetEval benchmark."],
+        //     [{ notid: "57319550-4dfc-492b-b1c8-a7bda2eb297f" }],
         //     new OpenAIEmbeddings(),
         //     {
         //         client: this.client,
-        //         indexName: "Toolllm",
+        //         indexName: "Toollm",
         //         textKey: "text",
         //         metadataKeys: ["notid"],
         //     }
         // );
 
-        // this.addNewDoc({name: "sunshine", docs: "how is the sun feeling today", type: "GET", url: "https://api.kanye.rest/" })
+        // const results = await this.store.similaritySearchWithScore("Run sentimenet anaylsis for the sentence, I like the sun", 3);
+        // console.log(results);
     }
 
 
@@ -91,35 +92,34 @@ export class BaseService {
             auth: (params.auth) ? params.auth : false,
         };
         console.log(doc);
-        console.log(JSON.stringify(doc))
         const statements = [
             "CREATE TABLE IF NOT EXISTS docs (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), doc JSONB)",
             `INSERT INTO docs (doc) VALUES ('${JSON.stringify(doc)}')`,
             "SELECT id FROM docs ORDER BY id DESC LIMIT 1",
         ];
-        // try {
-        await this.cockDBclient.connect();
-        for (let n = 0; n < statements.length; n++) {
-            let result = await this.cockDBclient.query(statements[n]);
-            if (result.rows[0]) {
-                console.log('added to cockDB');
-                console.log(result.rows[0].id)
-                await this.store.addDocuments([{
-                    pageContent: params.description,
-                    metadata: {
-                        id: result.rows[0].id,
-                    }
-                }]);
-                const doc = await this.getDocById(result.rows[0].id);
-                console.log('DOC: ', doc);
+        try {
+            await this.cockDBclient.connect();
+            for (let n = 0; n < statements.length; n++) {
+                let result = await this.cockDBclient.query(statements[n]);
+                if (result.rows[0]) {
+                    console.log('added to cockDB');
+                    console.log(result.rows[0].id)
+                    await this.store.addDocuments([{
+                        pageContent: params.description,
+                        metadata: {
+                            id: result.rows[0].id,
+                        }
+                    }]);
+                    const doc = await this.getDocById(result.rows[0].id);
+                    console.log('DOC: ', doc);
+                }
             }
+            await this.cockDBclient.end();
+            return 'added new doc';
+        } catch (err) {
+            console.log(`error connecting to cockDB: ${err}`);
+            return `Error adding: ${err}`
         }
-        await this.cockDBclient.end();
-        return 'added new doc';
-        // } catch (err) {
-        //     console.log(`error connecting to cockDB: ${err}`);
-        //     return `Error adding: ${err}`
-        // }
     }
 
     private async getDocById(id: string): Promise<any> {
@@ -177,8 +177,6 @@ export class BaseService {
     }
 
     private async matchQueryAndDocsToApi(query: string, apiDocs: apiDocs): Promise<string> {
-        console.log('hit');
-        console.log(query);
         console.log(apiDocs);
         const format = {
             OUTPUT: "A valid JSON string for this query to reach the api. Includes all values to make the request Ex:{method: 'post','url': 'https://example.com/api','headers': {'Content-Type': 'application/json'},'data': {'foo': 'bar'}}. If needed information is missing, return: {'LLM-TOOLS-ERROR': {json string with missing data}}",
@@ -214,7 +212,6 @@ export class BaseService {
         }
         try {
             const cleanStirng = removeFormatting(response);
-            console.log(cleanStirng);
             const json = JSON.parse(cleanStirng);
             console.log(json);
             return json
@@ -231,22 +228,7 @@ export class BaseService {
     }
 
     public async test(): Promise<any> {
-        await this.deleteDocsTable();
-        // const myStr = new String("openapi: 3.0.1\ninfo:\n\ttitle: TODO Plugin\n\tdescription: A plugin that allows the user to create and manage a TODO list using ChatGPT.\n\tversion: 'v1'\nservers:\n\t- url: http://localhost:3333\npaths:\n\t/todos{unique-api-key}:\n\t\tget:\n\t\t\toperationId: getTodos\n\t\t\tsummary: Get the list of todos\n\t\t\tresponses:\n\t\t\t\t200:\n\t\t\t\t\tdescription: OK\n\t\t\t\t\tcontent:\n\t\t\t\t\t\tapplication/json:\n\t\t\t\t\t\t\tschema:\n\t\t\t\t\t\t\t\t$ref: '#/components/schemas/getTodosResponse");
-        // console.log(myStr.toString());
-        // const data = await this.matchQueryAndDocsToApi("what are my todos", {
-        //     "baseurl": "http://localhost:3333/openapi/",
-        //     "type": "GET",
-        //     "openapi": myStr.toString(),
-        //     "desciprtion": "Get all of the todos from the server"
-        // });
-        // console.log(data);
-        // console.log(data["OUTPUT"]);
-        // await this.makeApiCall(data["OUTPUT"]);
-        // // var obj = '{"method": post,url: https://example.com/api,headers: {Content-Type: application/json},data: {foo: bar, baz: 5}}';
-        // // var obj = '{"method": "post", "url": "https://example.com/api", "headers": { "Content-Type": "application/json" }, "data": { "foo": "bar", "baz": 5, "nerd": false, "cheese": {"nerd": 10, "adsf": false} } }';
-        // // console.log(obj);
-        // // console.log(JSON.parse(obj));
+        // await this.deleteDocsTable();
         return 'test';
     }
 }
