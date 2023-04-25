@@ -3,7 +3,7 @@ const baseConstants = {
     notEnoughParms: 'Not enough parameters',
     docFound: 'Doc found',
     weviateIndexName: 'toolsAI',
-    similarityThreshold: 0.45,
+    similarityThreshold: 0.35,
 }
 
 export { baseConstants }

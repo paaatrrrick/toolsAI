@@ -24,6 +24,7 @@ export class BaseService {
     private model: OpenAI = new OpenAI({ openAIApiKey: process.env.OPEN_AI_KEY, temperature: 0 });
     private client: any;
     private store: WeaviateStore;
+    private cockDBclient: any;
 
     constructor() {
         this.setUp();
@@ -40,68 +41,68 @@ export class BaseService {
 
         this.store = await WeaviateStore.fromExistingIndex(new OpenAIEmbeddings(), {
             client: this.client,
-            indexName: "AITools",
-            metadataKeys: ["internal", "name", "docs", "type", "headers", "url", "body", "queryParameters", "requestFormat", "responseFormat"],
+            indexName: "Toolllm",
+            metadataKeys: ["notid"],
+        });
+
+        this.cockDBclient = new Client({
+            connectionString: process.env.cock_db_url,
+            application_name: "$ tools-nest-server"
         });
 
 
-        // const results = await this.store.similaritySearchWithScore("dirt poems", 5);
-
-        // console.log('here')
-        // console.log(results);
-
 
         // await WeaviateStore.fromTexts(
-        //     ["returns a random kanye west quote", "finds the best dog name for your dog"],
-        //     [{ internal: false, name: "kanye quote", docs: "returns a random kanye west quote", type: "GET", headers: "application.json", url: "https://api.kanye.rest/", body: "null", queryParameters: "null", requestFormat: "application/json", responseFormat: "application/json" },
-        //     { internal: false, name: "kanye quote", docs: "returns a random kanye west quote", type: "GET", headers: "application.json", url: "https://api.kanye.rest/", body: "null", queryParameters: "null", requestFormat: "application/json", responseFormat: "application/json" }],
+        //     ["find me a kanye quotes", "what would kanye say"],
+        //     [{ notid: "7196a34f-39b5-4606-85ed-78bec985551d" }, { notid: "7196a34f-39b5-4606-85ed-78bec985551d" }],
         //     new OpenAIEmbeddings(),
         //     {
         //         client: this.client,
-        //         indexName: "AITools",
+        //         indexName: "Toolllm",
         //         textKey: "text",
-        //         // metadataKeys: ["foo", "tame"],
-        //         metadataKeys: ["internal", "name", "docs", "type", "headers", "url", "body", "queryParameters", "requestFormat", "responseFormat"],
+        //         metadataKeys: ["notid"],
         //     }
         // );
 
+        // this.addNewDoc({name: "sunshine", docs: "how is the sun feeling today", type: "GET", url: "https://api.kanye.rest/" })
     }
 
 
     async public addNewDoc(params: apiDocs): Promise<string> {
         const doc = {
-            pageContent: params.docs,
-            metadata: {
-                internal: (params.internal) ? params.internal : false,
-                name: (params.name) ? params.name : "false",
-                docs: params.docs,
-                type: (params.type) ? params.type : "GET",
-                headers: "false",
-                url: params.url,
-                body: (params.body) ? params.body : "false",
-                queryParameters: (params.queryParameters) ? params.queryParameters : "false",
-                requestFormat: (params.requestFormat) ? params.requestFormat : "application/json",
-                responseFormat: (params.responseFormat) ? params.responseFormat : "application/json",
-            }
+            internal: (params.internal) ? params.internal : false,
+            name: (params.name) ? params.name : false,
+            docs: params.docs,
+            type: (params.type) ? params.type : "GET",
+            headers: (params.headers) ? params.headers : false,
+            url: params.url,
+            body: (params.body) ? params.body : false,
+            queryParameters: (params.queryParameters) ? params.queryParameters : false,
+            requestFormat: (params.requestFormat) ? params.requestFormat : "application/json",
+            responseFormat: (params.responseFormat) ? params.responseFormat : "application/json",
         }
-        await this.store.addDocuments([doc]);
 
-        const cockDBclient = new Client({
-            connectionString: process.env.cock_db_url,
-            application_name: "$ tools-nest-server"
-        });
         const statements = [
             "CREATE TABLE IF NOT EXISTS docs (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), doc JSONB)",
             `INSERT INTO docs (doc) VALUES ('${JSON.stringify(doc)}')`,
-            "SELECT doc FROM docs",
+            "SELECT id FROM docs ORDER BY id DESC LIMIT 1",
         ];
         try {
-            await cockDBclient.connect();
+            await this.cockDBclient.connect();
             for (let n = 0; n < statements.length; n++) {
-                let result = await cockDBclient.query(statements[n]);
-                if (result.rows[0]) { console.log(result.rows[0].doc); }
+                let result = await this.cockDBclient.query(statements[n]);
+                if (result.rows[0]) {
+                    console.log('added to cockDB');
+                    console.log(result.rows[0].id)
+                    await this.store.addDocuments([{
+                        pageContent: params.docs,
+                        metadata: {
+                            id: result.rows[0].id,
+                        }
+                    }]);
+                }
             }
-            await cockDBclient.end();
+            await this.cockDBclient.end();
         } catch (err) {
             console.log(`error connecting to cockDB: ${err}`);
         }
@@ -109,44 +110,59 @@ export class BaseService {
         return 'added new doc';
     }
 
+    private async getDocById(id: string): Promise<any> {
+        const cockDBclient = new Client({
+            connectionString: process.env.cock_db_url,
+            application_name: "$ tools-nest-server"
+        });
+
+        try {
+            await cockDBclient.connect();
+            const query = `SELECT doc FROM docs WHERE id = '${id}'`;
+            const result = await cockDBclient.query(query);
+            if (result.rows[0]) {
+                return result.rows[0].doc;
+            } else {
+                return null;
+            }
+        } catch (err) {
+            console.log(`Error connecting to CockroachDB: ${err}`);
+            return null;
+        } finally {
+            await cockDBclient.end();
+        }
+    }
+
     public async base(query: string): Promise<any> {
-        console.log('at base');
-        console.log(query)
         const doc = await this.checkIfDocExists(query);
-        console.log(doc);
         if (doc.docFoundStatus === baseConstants.noDocsFound) {
             return 'No docs found';
         }
-        const output = await this.matchQueryAndDocsToApi(query, doc.apiDocs);
-        console.log('we are back');
-        console.log(output);
+        const apiDocs = await this.getDocById(doc.cockRoachID);
+        const output = await this.matchQueryAndDocsToApi(query, apiDocs);
         return output;
     }
 
 
     private async checkIfDocExists(query: string): Promise<checkIfDocs> {
         const results = await this.store.similaritySearchWithScore(query, 1);
-        console.log(results);
         if (!results || !results[0] || results[0][1] > baseConstants.similarityThreshold) {
-            return { docFoundStatus: baseConstants.noDocsFound, apiDocs: results[0][0].metadata };
+            return { docFoundStatus: baseConstants.noDocsFound };
         }
-        return { docFoundStatus: baseConstants.docFound, apiDocs: results[0][0].metadata };
+        return { docFoundStatus: baseConstants.docFound, cockRoachID: results[0][0].metadata.notid };
     }
 
     private async matchQueryAndDocsToApi(query: string, apiDocs: apiDocs): Promise<any> {
-        console.log('here')
-        console.log(apiDocs)
-        console.log(query)
         var namesAndDescription = {}
-        if (apiDocs.queryParameters && apiDocs.queryParameters !== "false" && apiDocs.queryParameters !== "null") {
+        if (apiDocs.queryParameters) {
             namesAndDescription[`url`] = `updated url with query parameters, leave blank if not all query parameters are found. The current url is ${apiDocs.url}`;
         }
-        if (apiDocs.body && apiDocs.body !== "false" && apiDocs.body !== "null") {
+        if (apiDocs.body) {
             for (var key in apiDocs.body) {
                 namesAndDescription[`body-${key}`] = `Corresponding value for ${key} in the body of the api call, leave blank if the value is not found`
             }
         }
-        if (apiDocs.headers && apiDocs.headers !== "null" && apiDocs.headers !== "false") {
+        if (apiDocs.headers) {
             for (var key in apiDocs.headers) {
                 if (apiDocs.headers[key].includes('{')) {
                     namesAndDescription[`headers-${key}`] = `Corresponding value for ${key} in the header of the api call, leave blank if the value is not found`
@@ -162,16 +178,11 @@ export class BaseService {
             headers: (apiDocs.headers && apiDocs.headers !== "null" && apiDocs.headers !== "false") ? apiDocs.headers : {},
         }
 
-        console.log(namesAndDescription);
-        console.log(condensedAPI);
-
 
         if (Object.keys(namesAndDescription).length === 0) {
-            console.log('2')
             return { data: await this.makeApiCall(condensedAPI) };
         }
 
-        console.log('3')
         const parser = StructuredOutputParser.fromNamesAndDescriptions(namesAndDescription);
         const formatInstructions = parser.getFormatInstructions();
         const prompt = new PromptTemplate({
@@ -188,8 +199,6 @@ export class BaseService {
         });
         const response = await model.call(input);
         const output = await parser.parse(response);
-        console.log('back from openai');
-        console.log(output);
         const missingData = []
         for (var key in output) {
             if (key.substring(0, 8) === "headers-") {
@@ -211,7 +220,6 @@ export class BaseService {
                 condensedAPI.url = output[key];
             }
         }
-        console.log('3');
         console.log(missingData)
 
         if (missingData.length > 0) {
@@ -240,24 +248,24 @@ export class BaseService {
     }
 
     public async test(): Promise<any> {
-        this.matchQueryParamsToDocParams("what is the history of mexico", {
-            internal: false,
-            name: "kenya history",
-            docs: "the access header is 123, the year is 2022, the name is yooo, age is 5",
-            type: "GET",
-            url: "https://api.kanye.rest/{year}",
-            queryParameters: "true",
-            body: {
-                "name": "test name",
-                "age": "test age",
-            },
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "access-headers": "{access-headers}"
-            },
+        // this.matchQueryParamsToDocParams("what is the history of mexico", {
+        //     internal: false,
+        //     name: "kenya history",
+        //     docs: "the access header is 123, the year is 2022, the name is yooo, age is 5",
+        //     type: "GET",
+        //     url: "https://api.kanye.rest/{year}",
+        //     queryParameters: "true",
+        //     body: {
+        //         "name": "test name",
+        //         "age": "test age",
+        //     },
+        //     headers: {
+        //         "Content-Type": "application/json",
+        //         "Accept": "application/json",
+        //         "access-headers": "{access-headers}"
+        //     },
 
-        })
+        // })
         return 'test';
     }
 }

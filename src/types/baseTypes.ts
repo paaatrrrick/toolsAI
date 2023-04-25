@@ -1,19 +1,19 @@
 export interface apiDocs {
     internal?: boolean;
-    name?: string;
+    name?: string | boolean;
     docs: string;
     type?: string;
-    headers?: any;
+    headers?: any | boolean;
     url: string;
-    body?: any;
+    body?: any | boolean;
     queryParameters?: any;
-    requestFormat?: string;
-    responseFormat?: string;
+    requestFormat?: string | boolean;
+    responseFormat?: string | boolean;
 }
 
 export interface checkIfDocs {
     baseConstants: string;
-    apiDocs?: apiDocs;
+    cockRoachID?: string;
 }
 
 
