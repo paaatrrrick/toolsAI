@@ -208,7 +208,6 @@ export class BaseService {
             }
         }
         await cockDBclient.end();
-        this.logAllDocs();
         return 'added new doc';
         // } catch (err) {
         //     console.log(`error connecting to cockDB: ${err}`);
