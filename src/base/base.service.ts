@@ -61,13 +61,9 @@ export class BaseService {
         //     }
         // );
 
-        const results = await this.store.similaritySearchWithScore("Given a source sentence, find the similar of other sentences to it ranging from 0-1 on similarity. This is all-mpnet-base-v2 on Hugging Face. It maps sentences & paragraphs to a 768 dimensional dense vector space and can be used for tasks like clustering or semantic search.\n", 3);
-        console.log(results)
+        // const results = await this.store.similaritySearchWithScore("Given a source sentence, find the similar of other sentences to it ranging from 0-1 on similarity. This is all-mpnet-base-v2 on Hugging Face. It maps sentences & paragraphs to a 768 dimensional dense vector space and can be used for tasks like clustering or semantic search.\n", 3);
+        // console.log(results)
     }
-
-
-
-
 
     public async base(query: string): Promise<any> {
         const doc = await this.checkIfDocExists(query);
@@ -101,7 +97,6 @@ export class BaseService {
     }
 
     private async matchQueryAndDocsToApi(query: string, apiDocs: apiDocs): Promise<string> {
-        console.log(apiDocs);
         const format = {
             OUTPUT: "A JSON string formatted correctly to query the api, with all the required fields filled in {url, method, data?, headers, ect...}.",
         }
@@ -118,9 +113,6 @@ export class BaseService {
             openapi: `OPENAI DOCS:\n\n ${apiDocs.openapi}`,
             data: `QUERY:\n\n ${query}`,
         });
-        console.log('-----');
-        console.log(input);
-        console.log('-----');
         const response = await model.call(input);
 
         function removeFormatting(inputString) {
@@ -150,6 +142,8 @@ export class BaseService {
     private async makeApiCall(apiJSON: any): Promise<any> {
         console.log('making api call');
         console.log(apiJSON);
+        console.log(apiJSON["data"])
+        console.log(apiJSON["data"]["inputs"]["sentences"])
         const response = await axios(apiJSON);
         const data = await response.data;
         return data;
@@ -164,7 +158,7 @@ export class BaseService {
         //     data: { inputs: 'how are you today' }
         // })
         // console.log(data);
-        // await this.logAllDocs();
+        await this.logAllDocs();
         // console.log('-----------------')
         // const results2 = await this.store.similaritySearchWithScore("sentance", 2);
         // console.log(results2);
@@ -177,36 +171,36 @@ export class BaseService {
             openapi: params.openapi, baseurl: params.baseurl,
             websiteUrl: params.websiteUrl, auth: (params.auth) ? params.auth : false
         };
-        console.log(doc);
-        await this.updateDocById('57319550-4dfc-492b-b1c8-a7bda2eb297f', doc);
-        // const statements = [
-        //     "CREATE TABLE IF NOT EXISTS docs (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), doc JSONB)",
-        //     `INSERT INTO docs (doc) VALUES ('${JSON.stringify(doc)}')`,
-        //     "SELECT id FROM docs ORDER BY id DESC LIMIT 1",
-        // ];
-        // console.log(statements);
-        // const cockDBclient = new Client({
-        //     connectionString: process.env.cock_db_url,
-        //     application_name: "$ tools-nest-server"
-        // });
-        // await cockDBclient.connect();
-        // for (let n = 0; n < statements.length; n++) {
-        //     let result = await cockDBclient.query(statements[n]);
-        //     if (result.rows[0]) {
-        //         console.log('added to cockDB');
-        //         console.log(result.rows[0].id)
-        //         await this.store.addDocuments([{
-        //             pageContent: params.description,
-        //             metadata: {
-        //                 notid: result.rows[0].id,
-        //             }
-        //         }]);
-        //         const doc = await this.getDocById(result.rows[0].id);
-        //         console.log('DOC: ', doc);
-        //     }
-        // }
-        // await cockDBclient.end();
-        // return 'added new doc';
+        // console.log(doc);
+        // await this.updateDocById('cb91c512-68ee-4864-b637-9867855bcaa7', doc);
+        const statements = [
+            "CREATE TABLE IF NOT EXISTS docs (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), doc JSONB)",
+            `INSERT INTO docs (doc) VALUES ('${JSON.stringify(doc)}')`,
+            "SELECT id FROM docs ORDER BY id DESC LIMIT 1",
+        ];
+        console.log(statements);
+        const cockDBclient = new Client({
+            connectionString: process.env.cock_db_url,
+            application_name: "$ tools-nest-server"
+        });
+        await cockDBclient.connect();
+        for (let n = 0; n < statements.length; n++) {
+            let result = await cockDBclient.query(statements[n]);
+            if (result.rows[0]) {
+                console.log('added to cockDB');
+                console.log(result.rows[0].id)
+                await this.store.addDocuments([{
+                    pageContent: params.description,
+                    metadata: {
+                        notid: result.rows[0].id,
+                    }
+                }]);
+                const doc = await this.getDocById(result.rows[0].id);
+                console.log('DOC: ', doc);
+            }
+        }
+        await cockDBclient.end();
+        return 'added new doc';
         // } catch (err) {
         //     console.log(`error connecting to cockDB: ${err}`);
         //     return `Error adding: ${err}`
