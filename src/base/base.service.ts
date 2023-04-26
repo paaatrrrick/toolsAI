@@ -190,7 +190,14 @@ export class BaseService {
             application_name: "$ tools-nest-server"
         });
         await cockDBclient.connect();
-        // remove duplicates, don't allow duplicates
+
+        const duplicateCheck = `SELECT id FROM docs WHERE doc='${JSON.stringify(doc)}'`;
+        const duplicate = await cockDBclient.query(duplicateCheck);
+        if (duplicate.rows[0]){
+            console.log(`duplicate doc handled: ${duplicate}`)
+            return 'doc already exists'
+        }
+
         for (let n = 0; n < statements.length; n++) {
             let result = await cockDBclient.query(statements[n]);
             if (result.rows[0]) {
