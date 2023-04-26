@@ -34,12 +34,12 @@ function App() {
     const responseData = await response.text();
 
     setResponse(responseData);
-    setName('');
-    setDescription('');
-    setBaseurl('');
-    setAuth('');
-    setWebsiteUrl('');
-    setOpenapi('');
+    // setName('');
+    // setDescription('');
+    // setBaseurl('');
+    // setAuth('');
+    // setWebsiteUrl('');
+    // setOpenapi('');
   };
 
   const handleSubmitQueryAPI = async () => {
