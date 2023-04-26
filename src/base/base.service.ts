@@ -142,8 +142,8 @@ export class BaseService {
     private async makeApiCall(apiJSON: any): Promise<any> {
         console.log('making api call');
         console.log(apiJSON);
-        console.log(apiJSON["data"])
-        console.log(apiJSON["data"]["inputs"]["sentences"])
+        // console.log(apiJSON["data"])
+        // console.log(apiJSON["data"]["inputs"]["sentences"])
         const response = await axios(apiJSON);
         const data = await response.data;
         return data;
