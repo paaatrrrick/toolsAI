@@ -24,7 +24,6 @@ if (process.env.NODE_ENV !== "production") {
 export class BaseService {
     private model: OpenAI = new OpenAI({ openAIApiKey: process.env.OPEN_AI_KEY, temperature: 0 });
     private store: WeaviateStore;
-    private cockDBclient: any;
 
     constructor() {
         this.setUp();
@@ -73,18 +72,22 @@ export class BaseService {
         const apiDocs = await this.getDocById(doc.cockRoachID);
         const json = await this.matchQueryAndDocsToApi(query, apiDocs);
         console.log('herer123');
-        if (json["OUTPUT"]) {
-            if (json["OUTPUT"]["LLM-TOOLS-FORMATTING-ERROR"]) {
+        console.log(json);
+        if (json["url"]) {
+            const ouput = await this.makeApiCall(json);
+            return { type: "success", output: ouput };
+        }
+        if (json["stringObject"]) {
+            if (json["stringObject"]["LLM-TOOLS-FORMATTING-ERROR"]) {
                 return { type: "internal-error", output: json["LLM-TOOLS-FORMATTING-ERROR"] };
             }
-            if (json["OUTPUT"]["LLM-TOOLS-ERROR"]) {
+            if (json["stringObject"]["LLM-TOOLS-ERROR"]) {
                 return { type: "missing-data", output: json["LLM-TOOLS-ERROR"] };
             }
-            const ouput = await this.makeApiCall(json["OUTPUT"]);
+            const ouput = await this.makeApiCall(json["stringObject"]);
             return { type: "success", output: ouput };
-        } else {
-            return { type: "internal-error", output: "Unable to correctly format" };
         }
+        return { type: "internal-error", output: "Unable to correctly format" };
     }
 
 
@@ -98,8 +101,9 @@ export class BaseService {
 
     private async matchQueryAndDocsToApi(query: string, apiDocs: apiDocs): Promise<string> {
         const format = {
-            OUTPUT: "A JSON string formatted correctly to query the api, with all the required fields filled in {url, method, data?, headers, ect...}.",
+            stringObject: "A JSON string formatted correctly to query the api, with all the required fields filled in {url, method, data?, headers, ect...}.",
         }
+        console.log('starting query');
         const parser = StructuredOutputParser.fromNamesAndDescriptions(format);
         const formatInstructions = parser.getFormatInstructions();
         const prompt = new PromptTemplate({
@@ -129,11 +133,13 @@ export class BaseService {
         }
 
         try {
+            console.log('done');
+            console.log(response);
             const cleanStirng = removeFormatting(response);
             const json = JSON.parse(cleanStirng);
-            console.log(json);
             return json
         } catch (err) {
+            console.error(err);
             return { "LLM-TOOLS-FORMATTING-ERROR": { "error": "error parsing json" } };
         }
     }
@@ -190,12 +196,12 @@ export class BaseService {
             if (result.rows[0]) {
                 console.log('added to cockDB');
                 console.log(result.rows)
-                //await this.store.addDocuments([{
-                //    pageContent: params.description,
-                //    metadata: {
-                //        notid: result.rows[0].id,
-                //    }
-                //}]);
+                await this.store.addDocuments([{
+                    pageContent: params.description,
+                    metadata: {
+                        notid: result.rows[0].id,
+                    }
+                }]);
                 const doc = await this.getDocById(result.rows[0].id);
                 console.log('DOC: ', doc);
             }

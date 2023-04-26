@@ -8,7 +8,9 @@ export class BaseController {
     constructor(private readonly baseService: BaseService) { }
     @Post('base')
     async default(@Req() request: Request): Promise<any> {
-        return await this.baseService.base(request.body.prompt);
+        const data = await this.baseService.base(request.body.prompt);
+        console.log(data);
+        return data;
     }
 
     @Post('add')
