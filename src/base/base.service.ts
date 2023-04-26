@@ -171,12 +171,12 @@ export class BaseService {
             openapi: params.openapi, baseurl: params.baseurl,
             websiteUrl: params.websiteUrl, auth: (params.auth) ? params.auth : false
         };
-        // console.log(doc);
+        console.log(doc);
         // await this.updateDocById('cb91c512-68ee-4864-b637-9867855bcaa7', doc);
         const statements = [
             "CREATE TABLE IF NOT EXISTS docs (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), doc JSONB)",
             `INSERT INTO docs (doc) VALUES ('${JSON.stringify(doc)}')`,
-            "SELECT id FROM docs ORDER BY id DESC LIMIT 1",
+            `SELECT id FROM docs WHERE doc='${JSON.stringify(doc)}'`,
         ];
         console.log(statements);
         const cockDBclient = new Client({
@@ -184,17 +184,18 @@ export class BaseService {
             application_name: "$ tools-nest-server"
         });
         await cockDBclient.connect();
+        // remove duplicates, don't allow duplicates
         for (let n = 0; n < statements.length; n++) {
             let result = await cockDBclient.query(statements[n]);
             if (result.rows[0]) {
                 console.log('added to cockDB');
-                console.log(result.rows[0].id)
-                await this.store.addDocuments([{
-                    pageContent: params.description,
-                    metadata: {
-                        notid: result.rows[0].id,
-                    }
-                }]);
+                console.log(result.rows)
+                //await this.store.addDocuments([{
+                //    pageContent: params.description,
+                //    metadata: {
+                //        notid: result.rows[0].id,
+                //    }
+                //}]);
                 const doc = await this.getDocById(result.rows[0].id);
                 console.log('DOC: ', doc);
             }
