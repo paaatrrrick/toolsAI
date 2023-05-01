@@ -7,10 +7,5 @@ export interface apiDocs {
     websiteUrl: string;
 }
 
-export interface checkIfDocs {
-    baseConstants: string;
-    cockRoachID?: string;
-}
-
 
 
