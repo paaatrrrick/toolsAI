@@ -1,6 +1,7 @@
 const { Client } = require("pg");
 import { apiDocs } from '../types/types';
 
+
 export default class CockRoachDB {
     private cock_db_url: string
 
@@ -11,11 +12,15 @@ export default class CockRoachDB {
     async addNewDoc(doc: apiDocs): Promise<string> {
         // await this.updateDocById("4849439e-e3da-4e72-a177-17c19d15338b", doc);
         // return 'test';
+        console.log('At adding new document ✅')
+        console.log(doc);
         const statements = [
             "CREATE TABLE IF NOT EXISTS docs (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), doc JSONB)",
             `INSERT INTO docs (doc) VALUES ('${JSON.stringify(doc)}')`,
             `SELECT id FROM docs WHERE doc='${JSON.stringify(doc)}'`,
         ];
+        console.log(statements[0]);
+        console.log(this.cock_db_url);
         const cockDBclient = new Client({ connectionString: this.cock_db_url, application_name: "$ tools-nest-server" });
         await cockDBclient.connect();
 
@@ -25,14 +30,17 @@ export default class CockRoachDB {
             console.log(`duplicate doc handled: ${duplicate}`)
             return 'doc already exists'
         }
-
-        let result = await cockDBclient.query(statements[0]);
-        const id: string = result.rows[0].id;
-        if (result.rows[0]) {
-            console.log('added to cockDB');
-            const doc = await this.getDocById(result.rows[0].id);
-            console.log('ID: ', result.rows[0].id)
-            console.log('DOC: ', doc);
+        let id: string = null;
+        for (let n = 0; n < statements.length; n++) {
+            console.log('loop');
+            let result = await cockDBclient.query(statements[n]);
+            if (result.rows[0]) {
+                id = result.rows[0].id;
+                console.log('added to cockDB ✅');
+                const storedDoc = await this.getDocById(id);
+                console.log('ID: ', id)
+                console.log('DOC: ', storedDoc);
+            }
         }
         await cockDBclient.end();
         return id;
@@ -75,12 +83,13 @@ export default class CockRoachDB {
         await cockDBclient.end();
     }
 
-    async logAllDocs(): Promise<any> {
+    async logAllDocs(): Promise<any[]> {
         const cockDBclient = new Client({ connectionString: this.cock_db_url, application_name: "$ tools-nest-server" });
         const query = "SELECT * FROM docs";
         await cockDBclient.connect();
         const result = await cockDBclient.query(query);
         await cockDBclient.end();
+        // console.log(result.rows);
         return result.rows
     }
 

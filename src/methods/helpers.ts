@@ -1,6 +1,12 @@
+import { buffer } from "stream/consumers";
+
 function bigStringPrinter(string: string): void {
     if (string.length > 500) {
-        console.log(string.slice(0, 500));
+        console.log('')
+        console.log('----')
+        console.log(string.slice(0, 500) + '...');
+        console.log('----')
+        console.log('')
     } else {
         console.log(string);
     }
@@ -30,7 +36,7 @@ function switchOriginalFileNamesToBuffers(jsonObject: any, files: any[]): any {
             }
         }
         if (typeof jsonObject[curr] === "object") {
-            return { ...acc, [curr]: this.switchOriginalFileNamesToBuffers(jsonObject[curr], files) };
+            return { ...acc, [curr]: switchOriginalFileNamesToBuffers(jsonObject[curr], files) };
         }
         return { ...acc, [curr]: jsonObject[curr] };
     }, {});
@@ -38,4 +44,10 @@ function switchOriginalFileNamesToBuffers(jsonObject: any, files: any[]): any {
 }
 
 
-export { bigStringPrinter, removeFormatting, switchOriginalFileNamesToBuffers }
+function replaceString(baseString: string, findString: string, replaceWith: string): string {
+    return baseString.split(findString).join(replaceWith);
+}
+
+
+
+export { bigStringPrinter, removeFormatting, switchOriginalFileNamesToBuffers, replaceString }

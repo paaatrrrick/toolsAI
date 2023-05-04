@@ -4,11 +4,11 @@ import { BaseService } from './base.service';
 import { FilesInterceptor } from '@nestjs/platform-express';
 
 
-@Controller()
+@Controller('base')
 export class BaseController {
     constructor(private readonly baseService: BaseService) { }
 
-    @Post('base')
+    @Post()
     async default(@Req() request: Request): Promise<any> {
         console.log(request.body);
         const data = await this.baseService.base(request.body.prompt, []);
@@ -34,6 +34,7 @@ export class BaseController {
 
     @Get('test')
     test(): string {
+        console.log('at test')
         this.baseService.test();
         return 'done'
     }

@@ -31,7 +31,7 @@ function App() {
       body: JSON.stringify(data),
     };
 
-    const response = await fetch('http://localhost:3000/add', requestOptions);
+    const response = await fetch('http://localhost:3000/base/add', requestOptions);
     const responseData = await response.text();
 
     setResponse(responseData);
@@ -63,7 +63,7 @@ function App() {
       //   console.log(pair[0]);
       //   console.log(pair[1]);
       // }
-      response = await fetch("http://localhost:3000/upload", {
+      response = await fetch("http://localhost:3000/base/upload", {
         method: "POST",
         body: formData,
       });

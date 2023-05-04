@@ -4,7 +4,7 @@ import { PromptTemplate } from "langchain/prompts";
 import { StructuredOutputParser } from "langchain/output_parsers";
 import { baseConstants } from '../constants';
 import { apiDocs } from '../types/types';
-import { bigStringPrinter, removeFormatting, switchOriginalFileNamesToBuffers } from "../methods/helpers";
+import { bigStringPrinter, removeFormatting, switchOriginalFileNamesToBuffers, replaceString } from "../methods/helpers";
 import { ChatOpenAI } from "langchain/chat_models/openai";
 import { HumanChatMessage, SystemChatMessage, AIChatMessage } from "langchain/schema";
 import axios from 'axios';
@@ -15,21 +15,29 @@ export default class MainApi {
     sqlDB: CockRoachDB;
     private chat: ChatOpenAI;
     private chatHistory: any[] = [];
+    private isTesting: boolean;
 
-    constructor(sqlDB: CockRoachDB, vectorDB: any, openAIApiKey: string) {
+    constructor(sqlDB: CockRoachDB, vectorDB: any, openAIApiKey: string, isTesting: boolean) {
         this.vectorDB = vectorDB;
         this.sqlDB = sqlDB;
+        this.isTesting = isTesting;
         this.chat = new ChatOpenAI({ modelName: "gpt-3.5-turbo", temperature: 0, openAIApiKey });
     }
 
     public async base(prompt: string, files: any[]): Promise<any> {
+        // console.log('here123');
+        // const s = '{"url": "https://api-inference.huggingface.co/models/hustvl/yolos-tiny", "method": "POST","headers": {"Authorization": "Bearer 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"},"data": {"image": "IMG_6889.JPG"}}'
+        // const obj = JSON.parse(s)
+        // console.log(obj);
+        // const res = switchOriginalFileNamesToBuffers(obj, files);
+        // console.log(res);
         console.log('at base');
         const docID: string | boolean = await this.checkIfDocExists(prompt);
-        console.log('back to base 1 ✅')
+        console.log('\nback to base 1 ✅')
         if (!docID) return 'No matching API found found';
         //@ts-ignore
         const apiDocs: apiDocs = await this.sqlDB.getDocById(docID);
-        console.log('back to base 2 ✅');
+        console.log('\nback to base 2 ✅');
         bigStringPrinter(JSON.stringify(apiDocs));
 
         const doubleCheck: string | boolean = await this.doubleCheckDocsMatch(prompt, apiDocs);
@@ -39,15 +47,13 @@ export default class MainApi {
         if (typeof doubleCheck === 'string') return "Failed to format query correctly";
         if (doubleCheck === false) return 'No matching API found found';
 
-        const jsonString: string = await this.matchQueryAndDocsToApi(prompt, apiDocs, files);
-        console.log('back to base 4 ✅');
-        bigStringPrinter(jsonString);
-        if (this.checkIfResponseHasErrors(jsonString)) return 'Failed to format query correctly';
-        const jsonObject = JSON.parse(jsonString);
-
+        var json: string | any = await this.matchQueryAndDocsToApi(prompt, apiDocs, files);
+        console.log('\nback to base 4 ✅');
+        if (typeof json === 'string') return 'Failed to format query correctly';
+        console.log(json);
 
         const isJSONValidForAPI: boolean | string = await this.doubleCheckAPICallHasRequiredParams();
-        console.log('back to base 5 ✅');
+        console.log('\nback to base 5 ✅');
         console.log(isJSONValidForAPI);
 
         if (typeof isJSONValidForAPI === 'string') {
@@ -55,7 +61,9 @@ export default class MainApi {
             return `You need the following data to sucessfully make this call: ${isJSONValidForAPI.slice(3)}`;
         }
 
-        if ("url" in jsonObject) return await this.makeApiCall(jsonObject);
+
+
+        if ("url" in json) return await this.makeApiCall(json);
 
         return "Formatting error"
     }
@@ -64,7 +72,11 @@ export default class MainApi {
     private async checkIfDocExists(query: string): Promise<string | boolean> {
         console.log('checkIfDocExists')
         const results = await this.vectorDB.similaritySearchWithScore(query, 1);
-        if (!results || !results[0] || results[0][1] > baseConstants.similarityThreshold) {
+        console.log(results);
+        console.log(results[0][0]);
+        console.log(results[0][0].metadata.notid);
+        if (!results || !results[0]) {
+            console.log('no results');
             return false;
         }
         return results[0][0].metadata.notid;
@@ -107,18 +119,29 @@ export default class MainApi {
         return answer;
     }
 
-    private async matchQueryAndDocsToApi(prompt: string, apiDocs: apiDocs, files: any[]): Promise<string> {
+    private async matchQueryAndDocsToApi(prompt: string, apiDocs: apiDocs, files: any[]): Promise<string | any> {
         const areThereAnyFiles = files.length > 0;
+        console.log(files);
         const orgininalFileNames: string[] = files.map((file) => file.originalname);
         var promptTemplate = `Return only a valid JSON string to query a rest api {url, method, data?, headers?, ect...}.  Here are the API's OPENAPI DOCS and the incoming prompt for it {url, method, data?, headers?, ect...}. \nOPENAPI:\n ${apiDocs.openapi}\n\nPROMPT:\n${prompt}`;
         if (areThereAnyFiles) {
-            promptTemplate = `Output Format: only a valid JSON string to query a rest api {url, method, data?, headers?, ect...}.  Here are the API's OPENAPI DOCS, the incoming PROMPT, and FILE NAMES for it {url, method, data?, headers?, ect...}. \nOPENAPI: ${apiDocs.openapi}\n\nPROMPT: ${prompt}\n\nFILE NAMES: ${orgininalFileNames}`;
+            promptTemplate = `Output Format: only a valid JSON string to query a rest api {url, method, data?, headers?, ect...}. For files, put ONLY the filename, example: "cats.png".  Here are the API's OPENAPI DOCS, the incoming PROMPT, and FILE NAMES for it {url, method, data?, headers?, ect...}. \nOPENAPI: ${apiDocs.openapi}\n\nPROMPT: ${prompt}\n\nFILE NAMES:\n "${orgininalFileNames.join("\n")}"`;
         }
-        console.log('calling matchQueryAndDocsToApi');
         bigStringPrinter(promptTemplate);
         this.chatHistory.push(new HumanChatMessage(promptTemplate));
-        var json = await this.callChatGPT();
+        var json: string = await this.callChatGPT();
         console.log(json);
+
+        if (this.isTesting) {
+            console.log('is testing');
+            json = replaceString(json, "https://tools-llm", "http://localhost:3000")
+            json = replaceString(json, "http://tools-llm", "http://localhost:3000")
+            json = replaceString(json, "https://www.tools-llm", "http://localhost:3000")
+            json = replaceString(json, "http://www.tools-llm", "http://localhost:3000")
+            json = replaceString(json, "https://llm-py-tools.up.railway.app", "http://127.0.0.1:5000")
+            console.log('New json: ' + json);
+        }
+
         const formatFunctionCheckIfDescriptionFits = (text: string) => {
             try {
                 JSON.parse(text);
@@ -133,10 +156,12 @@ export default class MainApi {
         if (this.checkIfResponseHasErrors(json)) {
             return json;
         }
+        var jsonObject = JSON.parse(json);
+        console.log(jsonObject);
         if (areThereAnyFiles) {
-            json = switchOriginalFileNamesToBuffers(json, files);
+            jsonObject = switchOriginalFileNamesToBuffers(jsonObject, files);
         }
-        return json;
+        return jsonObject;
     }
 
     private async doubleCheckAPICallHasRequiredParams(): Promise<string | boolean> {
@@ -168,7 +193,7 @@ export default class MainApi {
             return "TOOLS_LLM_ERROR: failed to correctly format";
         }
         this.chatHistory.push(new HumanChatMessage(
-            "You failed to follow the direction to format the query correctly. Please try again. You have to follow the formatting perfectly. Return just a perfectly formatted response."
+            "Please try again. You have to follow the formatting perfectly. Try a new approach to formatting. Do NOT aplogize or say any else. Just return just a new perfectly formatted response."
         ));
         var query = await this.callChatGPT();
         if (testFunction(query)) {
@@ -190,6 +215,7 @@ export default class MainApi {
         console.log('making api call');
         const response = await axios(apiJSON);
         const data = await response.data;
+        console.log(data);
         return data;
     }
 

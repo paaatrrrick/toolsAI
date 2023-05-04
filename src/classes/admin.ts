@@ -17,14 +17,22 @@ export default class Admin {
             openapi: params.openapi, baseurl: params.baseurl,
             websiteUrl: params.websiteUrl, auth: (params.auth) ? params.auth : false
         };
+        // await this.sqlDB.updateDocById('018cf2b0-8919-43c7-a8b3-66869e74d69e', doc);
+        if (!doc.description) {
+            return 'No description';
+        }
         const id = await this.sqlDB.addNewDoc(doc);
+        if (!id || id.length < 2) {
+            return 'Error adding to SQL DB';
+        };
+        console.log(id);
         await this.vectorDB.addDocuments([{
             pageContent: params.description,
             metadata: {
                 notid: id,
             }
         }]);
-        console.log('added to vectorDB');
+        console.log('added to vectorDB ✅');
         return 'Successfuly added to both DBs'
     }
 

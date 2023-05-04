@@ -1,1 +1,2 @@
-if (false) console.log('test');
+
+console.log(obj);
