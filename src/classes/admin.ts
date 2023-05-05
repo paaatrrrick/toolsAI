@@ -17,7 +17,7 @@ export default class Admin {
             openapi: params.openapi, baseurl: params.baseurl,
             websiteUrl: params.websiteUrl, auth: (params.auth) ? params.auth : false
         };
-        // await this.sqlDB.updateDocById('018cf2b0-8919-43c7-a8b3-66869e74d69e', doc);
+        // await this.sqlDB.updateDocById('22855f4f-5e65-41a8-a3bf-7672512249fe', doc);
         if (!doc.description) {
             return 'No description';
         }

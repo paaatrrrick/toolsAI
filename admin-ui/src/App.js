@@ -90,7 +90,7 @@ function App() {
         <input value={baseurl} onChange={(e) => setBaseurl(e.target.value)} required />
 
         <label>Auth: this is optional (don't do anything for now):</label>
-        <input value={auth} onChange={(e) => setAuth(e.target.value)} />
+        <textarea value={auth} onChange={(e) => setAuth(e.target.value)} style={{ height: '100px' }}></textarea>
 
         <label>this is the url where you found the information</label>
         <input value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} required />

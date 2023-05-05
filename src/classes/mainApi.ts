@@ -52,7 +52,7 @@ export default class MainApi {
         if (typeof json === 'string') return 'Failed to format query correctly';
         console.log(json);
 
-        const isJSONValidForAPI: boolean | string = await this.doubleCheckAPICallHasRequiredParams();
+        const isJSONValidForAPI: boolean | string = await this.doubleCheckAPICallHasRequiredParams(apiDocs);
         console.log('\nback to base 5 ✅');
         console.log(isJSONValidForAPI);
 
@@ -93,23 +93,24 @@ export default class MainApi {
 
     private async doubleCheckDocsMatch(prompt: string, apiDocs: apiDocs): Promise<string | boolean> {
         this.chatHistory.push(new SystemChatMessage(
-            "You are a spectacular programmer. Your job it is to get OPENAPI docs for an API and an incoming prompt, and you produce JSON string formatted to query the API. When asked, you can answer questions about the API and the prompt. You give response that perfectly match a format that is given to you."
+            "You are a spectacular programmer who thinks step by step. Your job it is to get OPENAPI docs for an API and an incoming prompt, and you produce JSON string formatted to query the API. When asked, you can answer questions about the API and the prompt. You give response that perfectly match a format that is given to you."
         ),
             new HumanChatMessage(`Output Format: say ONLY 'Yes' or 'No' to answer. Does the following API description seem to satisfy the prompt's request for a tool\n DESCRIPTION: ${apiDocs.description}\n PROMPT: ${prompt}`)
         );
         var answer = await this.callChatGPT();
         console.log('Double check docs match');
         console.log('Output: ' + String(answer));
-
-        const formatFunctionCheckIfDescriptionFits = (query: string) => {
-            if (answer.startsWith("Yes") || answer.startsWith("No")) {
+        const formatFunctionCheckIfDescriptionFits = (text: string) => {
+            if (text.startsWith("Yes") || text.startsWith("No") || text.startsWith("yes") || text.startsWith("no")) {
                 return true
-            } else {
-                return false;
             }
+            return false;
         }
         if (!formatFunctionCheckIfDescriptionFits(answer)) {
-            answer = await this.recursiveFormatting(0, 3, formatFunctionCheckIfDescriptionFits);
+            answer = await this.recursiveFormatting(0, 3, "Correct formatting is an output that starts with either 'Yes' or 'No'.", formatFunctionCheckIfDescriptionFits);
+        }
+        if (!formatFunctionCheckIfDescriptionFits(answer)) {
+            return "Failed to format response";
         }
         if (answer.startsWith("Yes")) {
             return true;
@@ -123,9 +124,9 @@ export default class MainApi {
         const areThereAnyFiles = files.length > 0;
         console.log(files);
         const orgininalFileNames: string[] = files.map((file) => file.originalname);
-        var promptTemplate = `Return only a valid JSON string to query a rest api {url, method, data?, headers?, ect...}.  Here are the API's OPENAPI DOCS and the incoming prompt for it {url, method, data?, headers?, ect...}. \nOPENAPI:\n ${apiDocs.openapi}\n\nPROMPT:\n${prompt}`;
+        var promptTemplate = `Return only a valid JSON string to query a rest api {url, method, data?, headers?, ect...}.  Here are the API's OPENAPI DOCS and the incoming prompt for it {url, method, data?, headers?, ect...}. Think logically going step by step. Pay extreme attention to detail. \nOPENAPI:\n ${apiDocs.openapi}\n\nPROMPT:\n${prompt}`;
         if (areThereAnyFiles) {
-            promptTemplate = `Output Format: only a valid JSON string to query a rest api {url, method, data?, headers?, ect...}. For files, put ONLY the filename, example: "cats.png".  Here are the API's OPENAPI DOCS, the incoming PROMPT, and FILE NAMES for it {url, method, data?, headers?, ect...}. \nOPENAPI: ${apiDocs.openapi}\n\nPROMPT: ${prompt}\n\nFILE NAMES:\n "${orgininalFileNames.join("\n")}"`;
+            promptTemplate = `Output Format: only a valid JSON string to query a rest api {url, method, data?, headers?, ect...}. For files, put ONLY the filename, example: "cats.png".  Here are the API's OPENAPI DOCS, the incoming PROMPT, and FILE NAMES for it {url, method, data?, headers?, ect...}. Think logically going step by step. Pay extreme attention to detail. \nOPENAPI: ${apiDocs.openapi}\n\nPROMPT: ${prompt}\n\nFILE NAMES:\n "${orgininalFileNames.join("\n")}"`;
         }
         bigStringPrinter(promptTemplate);
         this.chatHistory.push(new HumanChatMessage(promptTemplate));
@@ -151,7 +152,7 @@ export default class MainApi {
             return true;
         }
         if (!formatFunctionCheckIfDescriptionFits(json)) {
-            json = await this.recursiveFormatting(0, 3, formatFunctionCheckIfDescriptionFits);
+            json = await this.recursiveFormatting(0, 3, "Correct formatting is ONLY a valid JSON string", formatFunctionCheckIfDescriptionFits);
         }
         if (this.checkIfResponseHasErrors(json)) {
             return json;
@@ -164,36 +165,48 @@ export default class MainApi {
         return jsonObject;
     }
 
-    private async doubleCheckAPICallHasRequiredParams(): Promise<string | boolean> {
-        this.chatHistory.push(new HumanChatMessage(
-            "Does your previous response have ALL required fields to call the API flled. This could include properties in the body, variables for the headers, and query parameters in the path. Output Format: Does say ONLY 'Yes' or 'No' to answer. If you say 'No', briefly explain what is missing."
-        ));
+    private async doubleCheckAPICallHasRequiredParams(apiDocs: apiDocs): Promise<string | boolean> {
+        const authString = (apiDocs.auth && apiDocs.auth !== "") ? apiDocs.auth : "";
+        const message = `Given the current JSON string in your previous response, if files names were replaced, will it be able to successfuly make the API call. To be successful all required items MUST be filled with their actual values. This could include actual values for ALL properties in the body, variables for the headers, Oauth tokens, and query parameters in the path. OUTPUT FORMAT: Your response MUST START with the string 'Yes' or 'No' to answer sufficiently. ONLY say yes if everything, other than file names, are 100% filled in. If you say 'No', briefly explain what is missing and add any insights from the openAPI docs that would help find the information. Your response will be sent directly to the prompter, provide infomation to them who doesn't have the API docs.\n\n Be extremely thorough. Lets think step by step. Extremely Concise and brief responses 99% of the time under 50 words.`
+        console.log(message);
+        this.chatHistory.push(new HumanChatMessage(message));
         var text = await this.callChatGPT();
         console.log(text);
         const formatFunctionCheckIfDescriptionFits = (text: string) => {
-            if (text.startsWith("Yes") || text.startsWith("No")) {
+            if (text.startsWith("Yes") || text.startsWith("No") || text.startsWith("yes") || text.startsWith("no")) {
                 return true
             }
             return false;
         }
         if (!formatFunctionCheckIfDescriptionFits(text)) {
-            text = await this.recursiveFormatting(0, 3, formatFunctionCheckIfDescriptionFits);
+            text = await this.recursiveFormatting(0, 3, "Correct formatting is an output that starts with either 'Yes' or 'No'.", formatFunctionCheckIfDescriptionFits);
         }
-        if (text.startsWith("Yes")) {
+        if (!formatFunctionCheckIfDescriptionFits(text)) {
+            return "Failed to format response";
+        }
+        if (text.startsWith("Yes") || text.startsWith("yes")) {
             return true;
         }
+        if (apiDocs.auth && apiDocs.auth !== "") {
+            console.log('here')
+            const message = `If this the OAuth token was missing, say what the the extremely important keyword phrase in these specifications: '${authString}'. If its not an OAuth issue, say abosuletly nothing. \n\n Your repsonse should have no extra words. `
+            this.chatHistory.push(new HumanChatMessage(message));
+            const OauthCheck = await this.callChatGPT();
+            console.log(OauthCheck)
+            text = text + "\n\n" + OauthCheck;
+            console.log(text);
+        }
         return text;
-
     }
 
-    private async recursiveFormatting(currentAttempt: number, maxAttemps: number, testFunction: (query: string) => boolean): Promise<string> {
+    private async recursiveFormatting(currentAttempt: number, maxAttemps: number, additionalString: string, testFunction: (query: string) => boolean): Promise<string> {
         console.log('recursiveFormatting');
         if (currentAttempt >= maxAttemps) {
             console.log('recursiveFormatting: max attempts reached');
             return "TOOLS_LLM_ERROR: failed to correctly format";
         }
         this.chatHistory.push(new HumanChatMessage(
-            "Please try again. You have to follow the formatting perfectly. Try a new approach to formatting. Do NOT aplogize or say any else. Just return just a new perfectly formatted response."
+            `Please try again. You have to follow the formatting perfectly. Try a new approach to formatting. Do NOT aplogize or say any else. Just return just a new perfectly formatted response. ${additionalString}`
         ));
         var query = await this.callChatGPT();
         if (testFunction(query)) {
@@ -201,7 +214,7 @@ export default class MainApi {
             return query;
         }
         console.log('Failed repsonse in recur: ' + query);
-        query = await this.recursiveFormatting(currentAttempt + 1, maxAttemps, testFunction);
+        query = await this.recursiveFormatting(currentAttempt + 1, maxAttemps, additionalString, testFunction);
         return query;
     }
 

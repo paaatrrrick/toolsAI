@@ -82,6 +82,26 @@ export class BaseService {
             console.log(responseJson);
             return responseJson;
         } else {
+            // console.log('here123');
+            // const res = await axios({
+            //     url: 'https://www.googleapis.com/blogger/v3/blogs/5311709062758717144/posts/',
+            //     method: 'POST',
+            //     data: {
+            //         kind: "blogger#post",
+            //         blog: {
+            //             id: "5311709062758717144"
+            //         },
+            //         title: 'Tea is tasty',
+            //         content: 'what a wonderful world we have that is team filled'
+            //     },
+            //     headers: {
+            //         'Content-Type': 'application/json',
+            //         Authorization: 'Bearer ya29.a0AWY7CknUZCXu48g0pI2u4_IMisNbEQZXs_-7ZPAzWsLjiIaGJYWGDQtR4NXz0iHBnDqtbmHH3ml0bc4ul-6xuZdkZp7hjBZBxSjspKHtUz6U5n4VVU3s3J96XzMGJvltHoOr9aAkijg0D3f1Ns6RA2alcHQuBgaCgYKATESARASFQG1tDrpeY_mRtYPX1NWoqh9us-6ug0165'
+            //     }
+            // });
+            // console.log(res);
+            // console.log('done');
+            // return "res";
             return this.MainApi.base(query, files);
         }
     }
