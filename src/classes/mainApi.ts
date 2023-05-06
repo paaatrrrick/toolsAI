@@ -160,7 +160,11 @@ export default class MainApi {
         }
         console.log('\nback to base 4.25 ✅');
         var answer: string = await callModel(0);
+        console.log('first answer');
+        console.log(answer);
         answer = extractJson(answer)
+        console.log('second answer');
+        console.log(answer);
 
 
         if (!formatFunctionCheckApiIsFilledIn(answer)) {
@@ -172,7 +176,7 @@ export default class MainApi {
             console.log('here asfdsf');
             return "TOOLS_LLM_ERROR: failed to correctly format";
         }
-        console.log(answer);
+        console.log('Final answer: ' + answer);
         const answerObject = JSON.parse(answer);
         console.log(answerObject);
         const correct = answerObject["Correct"];
