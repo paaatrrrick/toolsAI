@@ -1,4 +1,4 @@
-import { Controller, Get, Req, Post, Res, Body, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Req, Post, Res, Body, UploadedFiles, UseInterceptors, HttpException, HttpStatus } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { BaseService } from './base.service';
 import { FilesInterceptor } from '@nestjs/platform-express';
@@ -36,7 +36,7 @@ export class BaseController {
     test(): string {
         console.log('at test')
         this.baseService.test();
-        return 'done'
+        return 'we are cool';
     }
 }
 

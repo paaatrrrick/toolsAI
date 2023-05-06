@@ -89,7 +89,7 @@ export default class CockRoachDB {
         await cockDBclient.connect();
         const result = await cockDBclient.query(query);
         await cockDBclient.end();
-        // console.log(result.rows);
+        console.log(result.rows);
         return result.rows
     }
 

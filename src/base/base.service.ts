@@ -18,7 +18,6 @@ const weaviate = require('weaviate-ts-client');
 export class BaseService {
     private Admin: Admin;
     private CockRoachDB: CockRoachDB;
-    private MainApi: MainApi;
     private vectorDB: WeaviateStore;
     private upload: multer.Multer;
     private model: OpenAI;
@@ -51,21 +50,16 @@ export class BaseService {
         this.isTesing = process.env.isTesting === 'true';
         this.model = new OpenAI({ openAIApiKey: process.env.OPENAI_API_KEY, temperature: 0 });
         this.CockRoachDB = new CockRoachDB(process.env.cock_db_url);
-        this.MainApi = new MainApi(this.CockRoachDB, this.vectorDB, process.env.OPENAI_API_KEY, this.isTesing);
         this.Admin = new Admin(this.CockRoachDB, this.vectorDB);
     }
     public async base(query: string, files: any[]) {
         if (process.env.testingPython === 'true') {
             console.log('testing python');
-            //send a request to http://127.0.0.1:5000/api/gestureRecognition with the files attached
             console.log(files[0]);
-            // Create a FormData object
             const formData = new FormData();
 
             // Append the JSON data as a string
             // formData.append("data", JSON.stringify({ query: query }));
-
-            // Append the first file in the files array with fieldname 'image'
             if (files.length > 0) {
                 const file = files[0];
                 const blob = new Blob([file.buffer], { type: file.mimetype });
@@ -82,27 +76,8 @@ export class BaseService {
             console.log(responseJson);
             return responseJson;
         } else {
-            // console.log('here123');
-            // const res = await axios({
-            //     url: 'https://www.googleapis.com/blogger/v3/blogs/5311709062758717144/posts/',
-            //     method: 'POST',
-            //     data: {
-            //         kind: "blogger#post",
-            //         blog: {
-            //             id: "5311709062758717144"
-            //         },
-            //         title: 'Tea is tasty',
-            //         content: 'what a wonderful world we have that is team filled'
-            //     },
-            //     headers: {
-            //         'Content-Type': 'application/json',
-            //         Authorization: 'Bearer ya29.a0AWY7CknUZCXu48g0pI2u4_IMisNbEQZXs_-7ZPAzWsLjiIaGJYWGDQtR4NXz0iHBnDqtbmHH3ml0bc4ul-6xuZdkZp7hjBZBxSjspKHtUz6U5n4VVU3s3J96XzMGJvltHoOr9aAkijg0D3f1Ns6RA2alcHQuBgaCgYKATESARASFQG1tDrpeY_mRtYPX1NWoqh9us-6ug0165'
-            //     }
-            // });
-            // console.log(res);
-            // console.log('done');
-            // return "res";
-            return this.MainApi.base(query, files);
+            const mainAPI = new MainApi(this.CockRoachDB, this.vectorDB, process.env.OPENAI_API_KEY, this.isTesing);
+            return mainAPI.run(query, files);
         }
     }
 
@@ -111,8 +86,37 @@ export class BaseService {
     }
 
     public async test() {
-        console.log('here123');
-        await axios({ url: 'http://localhost:3000/in-house/sendgmail', method: 'post', data: { "to": "me@gmail.com" } })
+        const docs = await this.CockRoachDB.logAllDocs();
+        // console.log('here123');
+        // try {
+        //     const response = await axios({
+        //         url: 'https://www.googleapis.com/blogger/v3/blogs/5311709062758717144/posts/',
+        //         method: 'POST',
+        //         data: {
+        //             kind: 'blogger#post',
+        //             blog: { id: '5311709062758717144' },
+        //             title: 'Tea is tasty',
+        //             content: 'what a wonderful world we have that is team filled'
+        //         },
+        //         headers: {
+        //             'Content-Type': 'application/json',
+        //             Authorization: 'Bearer ya29.asdf0AWY7CknUZCXu48g0pI2u4_IMisNbEQZXs_-7ZPAzWsLjiIaGJYWGDQtR4NXz0iHBnDqtbmHH3ml0bc4ul-6xuZdkZp7hjBZBxSjspKHtUz6U5n4VVU3s3J96XzMGJvltHoOr9aAkijg0D3f1Ns6RA2alcHQuBgaCgYKATESARASFQG1tDrpeY_mRtYPX1NWoqh9us-6ug0165'
+        //         }
+        //     });
+        //     console.log('first')
+        //     console.log(response);
+        //     console.log(response.data);
+        // } catch (error) {
+        //     console.log('at error');
+        //     console.log(error);
+        //     if (error.response) {
+        //         console.log('real error');
+        //         console.log(error.response.data);
+        //         console.log(error.response.status);
+        //         console.log(error.response.headers);
+        //     }
+        // }
+        return 'we are cool'
     }
 
     public async resetVectorDB() {

@@ -3,6 +3,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 const baseConstants = {
+    internalFormattingError: 'Internal Error: Failed to format correctly',
     noDocsFound: 'No docs found',
     notEnoughParms: 'Not enough parameters',
     docFound: 'Doc found',
@@ -14,10 +15,18 @@ const devVariables = {
     isTesting: (process.env.IS_TESTING === "true") ? true : false
 }
 
-export { baseConstants, devVariables }
+const models: Model = {
+    gpt4: 'gpt-4',
+    gpt3Turbo: 'gpt-3.5-turbo'
+}
+
+
+
+export { baseConstants, devVariables, models }
 
 
 interface baseConstants {
+    internalFormattingError: string,
     noDocsFound: string,
     notEnoughParms: string,
     docFound: string,
@@ -28,4 +37,9 @@ interface baseConstants {
 
 interface devVariables {
     isTesting: boolean
+}
+
+interface Model {
+    gpt4: string;
+    gpt3Turbo: string;
 }

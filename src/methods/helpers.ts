@@ -1,5 +1,3 @@
-import { buffer } from "stream/consumers";
-
 function bigStringPrinter(string: string): void {
     if (string.length > 500) {
         console.log('')
@@ -48,6 +46,15 @@ function replaceString(baseString: string, findString: string, replaceWith: stri
     return baseString.split(findString).join(replaceWith);
 }
 
+function updateUrlsForBeingLocal(json) {
+    json = replaceString(json, "https://tools-llm", "http://localhost:3000")
+    json = replaceString(json, "http://tools-llm", "http://localhost:3000")
+    json = replaceString(json, "https://www.tools-llm", "http://localhost:3000")
+    json = replaceString(json, "http://www.tools-llm", "http://localhost:3000")
+    json = replaceString(json, "https://llm-py-tools.up.railway.app", "http://127.0.0.1:5000")
+    return json;
+}
 
 
-export { bigStringPrinter, removeFormatting, switchOriginalFileNamesToBuffers, replaceString }
+
+export { bigStringPrinter, removeFormatting, switchOriginalFileNamesToBuffers, replaceString, updateUrlsForBeingLocal }
