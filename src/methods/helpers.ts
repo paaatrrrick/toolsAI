@@ -46,6 +46,31 @@ function replaceString(baseString: string, findString: string, replaceWith: stri
     return baseString.split(findString).join(replaceWith);
 }
 
+function extractJson(json: string): string {
+    try {
+        JSON.parse(json);
+        return json
+    } catch (e) {
+        var startPattern = '```json';
+        var endPattern = '```';
+        let startIndex = json.indexOf(startPattern);
+        let endIndex = json.lastIndexOf(endPattern);
+        if (startIndex !== -1 && endIndex !== -1) {
+            let cleanedString = json.slice(startIndex + startPattern.length, endIndex);
+            return cleanedString.trim();
+        }
+        var startPattern = '{';
+        var endPattern = '}';
+        startIndex = json.indexOf(startPattern);
+        endIndex = json.lastIndexOf(endPattern);
+        if (startIndex !== -1 && endIndex !== -1) {
+            let cleanedString = json.slice(startIndex + startPattern.length, endIndex);
+            return cleanedString.trim();
+        }
+        return json;
+    }
+}
+
 function updateUrlsForBeingLocal(json) {
     json = replaceString(json, "https://tools-llm", "http://localhost:3000")
     json = replaceString(json, "http://tools-llm", "http://localhost:3000")
@@ -57,4 +82,4 @@ function updateUrlsForBeingLocal(json) {
 
 
 
-export { bigStringPrinter, removeFormatting, switchOriginalFileNamesToBuffers, replaceString, updateUrlsForBeingLocal }
+export { bigStringPrinter, removeFormatting, switchOriginalFileNamesToBuffers, replaceString, updateUrlsForBeingLocal, extractJson }

@@ -2,7 +2,7 @@ import { WeaviateStore } from "langchain/vectorstores/weaviate";
 import { OpenAI } from "langchain/llms/openai";
 import { baseConstants, models } from '../constants/mainConstants';
 import { apiDocs } from '../types/types';
-import { bigStringPrinter, removeFormatting, switchOriginalFileNamesToBuffers, replaceString, updateUrlsForBeingLocal } from "../methods/helpers";
+import { bigStringPrinter, removeFormatting, switchOriginalFileNamesToBuffers, replaceString, updateUrlsForBeingLocal, extractJson } from "../methods/helpers";
 import { ChatOpenAI } from "langchain/chat_models/openai";
 import { HumanChatMessage, SystemChatMessage, AIChatMessage } from "langchain/schema";
 import { doubleCheckDocsMatchPromptChatMessages, matchQueryAndDocsToApiPromptChatMessages, checkAPICallIsFilledCorrectlyChatMessages } from "../constants/prompts";
@@ -60,10 +60,14 @@ export default class MainApi {
         return await this.doubleCheckDocsMatch();
     }
 
+
+
+
     private async doubleCheckDocsMatch(): Promise<any> {
         const callModel = async (temperature): Promise<string> => {
             const model = new ChatOpenAI({ modelName: "gpt-3.5-turbo", temperature, openAIApiKey: this.openAIApiKey });
-            const messages = [...doubleCheckDocsMatchPromptChatMessages, new HumanChatMessage(`REQUEST: ${this.prompt}\n\nTOOL DESCRIPTION: ${this.apiDocs.description}`)]
+            const messages = [...doubleCheckDocsMatchPromptChatMessages, new HumanChatMessage(`TOOL DESCRIPTION: ${this.apiDocs.description} PROMPT: ${this.prompt}\n\n`)]
+            console.log(messages);
             const answer = await model.call(messages);
             console.log('sucessfully called');
             return answer.text;
@@ -102,8 +106,12 @@ export default class MainApi {
             return answer.text;
         }
         var json: string = await callModel(0);
-        console.log('\nback to base 4 ✅');
+        console.log('first answer');
         console.log(json);
+        json = extractJson(json)
+        console.log('second answer');
+        console.log(json);
+        console.log('\nback to base 4 ✅');
 
         if (!formatFunctionMatchQueryAndDocsToApi(json)) {
             json = await this.recursiveFormatting(callModel, 0, 2, 0.05, formatFunctionCheckIfDescriptionFits);
@@ -115,7 +123,7 @@ export default class MainApi {
         console.log('\nback to base 4.5 ✅');
         console.log(isJSONValidForAPI);
 
-        if (typeof isJSONValidForAPI === 'string') {
+        if (typeof isJSONValidForAPI !== 'boolean') {
             if (this.checkIfResponseHasErrors(isJSONValidForAPI)) return baseConstants.internalFormattingError;
             return isJSONValidForAPI
         }
@@ -147,29 +155,31 @@ export default class MainApi {
         const callModel = async (temperature: number): Promise<string> => {
             const model = new ChatOpenAI({ modelName: models.gpt4, temperature, openAIApiKey: this.openAIApiKey });
             const messages = [...checkAPICallIsFilledCorrectlyChatMessages, new HumanChatMessage(`JSON ${json} \n' +'OPENAPI DOCS: ${this.apiDocs.openapi}\n' + docs3 +'Additional Info: ${authStr}`)]
-            console.log(messages);
             const answer = await model.call(messages);
             return answer.text;
         }
         console.log('\nback to base 4.25 ✅');
         var answer: string = await callModel(0);
-        console.log(answer);
+        answer = extractJson(answer)
 
 
         if (!formatFunctionCheckApiIsFilledIn(answer)) {
+            console.log('it did not pass the test');
             answer = await this.recursiveFormatting(callModel, 0, 3, 0.05, formatFunctionCheckApiIsFilledIn);
         }
 
         if (!formatFunctionCheckApiIsFilledIn(answer)) {
+            console.log('here asfdsf');
             return "TOOLS_LLM_ERROR: failed to correctly format";
         }
-        console.log('Final answer: ' + answer);
+        console.log(answer);
         const answerObject = JSON.parse(answer);
+        console.log(answerObject);
         const correct = answerObject["Correct"];
         if (correct.startsWith("Yes") || correct.startsWith("yes")) {
             return true;
         }
-        return answer["NextSteps"];
+        return answerObject["NextSteps"];
     }
 
     private async recursiveFormatting(callModel: (temperature: number) => Promise<string>, currentAttempt: number, maxAttemps: number, temperature: number, testFunction: (query: string) => boolean): Promise<string> {

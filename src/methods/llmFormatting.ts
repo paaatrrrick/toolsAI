@@ -1,3 +1,5 @@
+import { extractJson } from "./helpers";
+
 const formatFunctionCheckIfDescriptionFits = (text: string): boolean => {
     if (text.startsWith("Yes") || text.startsWith("No") || text.startsWith("yes") || text.startsWith("no")) {
         return true
@@ -6,6 +8,7 @@ const formatFunctionCheckIfDescriptionFits = (text: string): boolean => {
 }
 
 const formatFunctionMatchQueryAndDocsToApi = (text: string): boolean => {
+    text = extractJson(text);
     try {
         JSON.parse(text);
     } catch (e) {
@@ -15,6 +18,7 @@ const formatFunctionMatchQueryAndDocsToApi = (text: string): boolean => {
 }
 
 const formatFunctionCheckApiIsFilledIn = (text): boolean => {
+    text = extractJson(text);
     try {
         const object = JSON.parse(text);
         if (object["Correct"] && object["NextSteps"]) {
