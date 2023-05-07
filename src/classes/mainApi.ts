@@ -65,9 +65,8 @@ export default class MainApi {
 
     private async doubleCheckDocsMatch(): Promise<any> {
         const callModel = async (temperature): Promise<string> => {
-            const model = new ChatOpenAI({ modelName: "gpt-3.5-turbo", temperature, openAIApiKey: this.openAIApiKey });
+            const model = new ChatOpenAI({ modelName: models.gpt3Turbo, temperature, openAIApiKey: this.openAIApiKey });
             const messages = [...doubleCheckDocsMatchPromptChatMessages, new HumanChatMessage(`TOOL DESCRIPTION: ${this.apiDocs.description} PROMPT: ${this.prompt}\n\n`)]
-            console.log(messages);
             const answer = await model.call(messages);
             console.log('sucessfully called');
             return answer.text;
@@ -107,9 +106,7 @@ export default class MainApi {
         }
         var json: string = await callModel(0);
         console.log('first answer');
-        console.log(json);
         json = extractJson(json)
-        console.log('second answer');
         console.log(json);
         console.log('\nback to base 4 ✅');
 
@@ -139,44 +136,53 @@ export default class MainApi {
 
 
     private async makeApiCall(apiJSON: any): Promise<any> {
-        console.log('making api call');
-        const response = await axios(apiJSON);
-        const data = await response.data;
-        console.log(data);
+        var data = {};
+        try {
+            const response = await axios(apiJSON);
+            data = response.data;
+        } catch (error) {
+            if (error.response) {
+                console.log(error.response.data);
+                console.log(error.response.status);
+                const chat = new ChatOpenAI({ modelName: models.gpt3Turbo, openAIApiKey: this.openAIApiKey });
+                const prompt = `I wanted to do the following by calling an API: "${this.prompt}". I created a JSON ${JSON.stringify(apiJSON)} to call the API. The API responded with ${JSON.stringify(error.response.data)} and status code ${error.response.status}. In 1-2 sentences, please explain what I could do to fix this by only changing my data *assume I formatted the api call perfectly*.`;
+                console.log(prompt);
+                const answer = await chat.call([new HumanChatMessage(prompt)]);
+                console.log(answer.text);
+                return `Remake your API call here with the following changes: ${answer.text}`;
+            }
+        }
         return data;
     }
 
 
     private async doubleCheckAPICallHasRequiredParams(json: string): Promise<string | boolean> {
         var authStr = 'NA';
-        if (this.apiDocs.auth) {
-            authStr = this.apiDocs.auth;
-        }
+        // if (this.apiDocs.auth) {
+        //     authStr = this.apiDocs.auth;
+        // }
         const callModel = async (temperature: number): Promise<string> => {
             const model = new ChatOpenAI({ modelName: models.gpt4, temperature, openAIApiKey: this.openAIApiKey });
             const messages = [...checkAPICallIsFilledCorrectlyChatMessages, new HumanChatMessage(`JSON ${json} \n' +'OPENAPI DOCS: ${this.apiDocs.openapi}\n' + docs3 +'Additional Info: ${authStr}`)]
             const answer = await model.call(messages);
             return answer.text;
         }
-        console.log('\nback to base 4.25 ✅');
         var answer: string = await callModel(0);
-        console.log('first answer');
-        console.log(answer);
         answer = extractJson(answer)
-        console.log('second answer');
         console.log(answer);
 
 
         if (!formatFunctionCheckApiIsFilledIn(answer)) {
-            console.log('it did not pass the test');
-            answer = await this.recursiveFormatting(callModel, 0, 3, 0.05, formatFunctionCheckApiIsFilledIn);
+            console.log('it did not pass the test: doubleCheckAPICallHasRequiredParams');
+            let tempAnswer = await this.recursiveFormatting(callModel, 0, 3, 0.05, formatFunctionCheckApiIsFilledIn);
+            answer = extractJson(tempAnswer)
         }
 
         if (!formatFunctionCheckApiIsFilledIn(answer)) {
-            console.log('here asfdsf');
             return "TOOLS_LLM_ERROR: failed to correctly format";
         }
-        console.log('Final answer: ' + answer);
+        console.log('Final answer')
+        console.log(answer);
         const answerObject = JSON.parse(answer);
         console.log(answerObject);
         const correct = answerObject["Correct"];
@@ -191,7 +197,7 @@ export default class MainApi {
         console.log('Recursive Formatting');
         console.log(answer)
         if (testFunction(answer)) {
-            console.log('Success')
+            console.log('Successfuly recurisvely formatting');
             return answer;
         }
         console.log('Failure');
