@@ -10,19 +10,27 @@ const formatFunctionCheckIfDescriptionFits = (text: string): boolean => {
 const formatFunctionMatchQueryAndDocsToApi = (text: string): boolean => {
     text = extractJson(text);
     try {
-        JSON.parse(text);
+        const json = JSON.parse(text);
+        //check if there is a url in json
+        if (!json["url"]) {
+            return false;
+        }
+        //check if there is either a data of FormData in json
+        if (!json["data"] && !json["FormData"]) {
+            return false;
+        }
     } catch (e) {
         return false;
     }
     return true;
 }
 
-const formatFunctionCheckApiIsFilledIn = (text): boolean => {
+const formatFunctionCheckApiIsFilledIn = (text: string): boolean => {
     text = extractJson(text);
     try {
         const object = JSON.parse(text);
-        if (object["Correct"] && object["NextSteps"]) {
-            const correct = object["Correct"];
+        if (object["CanPass"] && object["NextSteps"]) {
+            const correct = object["CanPass"];
             if (correct.startsWith("Yes") || correct.startsWith("No") || correct.startsWith("yes") || correct.startsWith("no")) {
                 return true;
             }

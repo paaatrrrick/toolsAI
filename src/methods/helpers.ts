@@ -1,3 +1,7 @@
+import { models, bodyTypesValues, baseConstants, responseTypesValues } from '../constants/mainConstants';
+import { parseOpenAPIReponse } from '../constants/interfaces';
+
+
 function bigStringPrinter(string: string): void {
     if (string.length > 500) {
         console.log('')
@@ -8,19 +12,6 @@ function bigStringPrinter(string: string): void {
     } else {
         console.log(string);
     }
-}
-
-
-function removeFormatting(inputString: string): string {
-    const startPattern = '```json';
-    const endPattern = '```';
-    let startIndex = inputString.indexOf(startPattern);
-    let endIndex = inputString.lastIndexOf(endPattern);
-    if (startIndex !== -1 && endIndex !== -1) {
-        let cleanedString = inputString.slice(startIndex + startPattern.length, endIndex);
-        return cleanedString.trim();
-    }
-    return inputString;
 }
 
 function switchOriginalFileNamesToBuffers(jsonObject: any, files: any[]): any {
@@ -39,6 +30,31 @@ function switchOriginalFileNamesToBuffers(jsonObject: any, files: any[]): any {
         return { ...acc, [curr]: jsonObject[curr] };
     }, {});
     return newObject;
+}
+
+function arrayOfFilesToFormData(ArrayOfFormObjects: object[], files: any[]): FormData {
+    const formData = new FormData();
+    for (const formObject of ArrayOfFormObjects) {
+        console.log('top of loop');
+        console.log(formObject);
+        const key = Object.keys(formObject)[0];
+        console.log(key)
+        const value = formObject[key];
+        console.log(value);
+        const index = files.findIndex((file) => file.originalname === value);
+        if (index === -1) {
+            console.log('file not found');
+            formData.append(key, value);
+        } else {
+            console.log('file found');
+            const file = files[index];
+            console.log(file);
+            const blob = new Blob([file.buffer], { type: file.mimetype });
+            formData.append('image', blob, file.originalname);
+        }
+    };
+    console.log(formData);
+    return formData;
 }
 
 
@@ -71,7 +87,7 @@ function extractJson(json: string): string {
     }
 }
 
-function updateUrlsForBeingLocal(json) {
+function updateUrlsForBeingLocal(json: string): string {
     json = replaceString(json, "https://tools-llm", "http://localhost:3000")
     json = replaceString(json, "http://tools-llm", "http://localhost:3000")
     json = replaceString(json, "https://www.tools-llm", "http://localhost:3000")
@@ -80,6 +96,34 @@ function updateUrlsForBeingLocal(json) {
     return json;
 }
 
+function parseOpenAPI(openAPI: string, getBool = false as boolean): parseOpenAPIReponse | boolean | string {
+    try {
+        const apiJSON = JSON.parse(openAPI);
+        // console.log(apiJSON);
+        const paths = apiJSON["paths"];
+        //get an array of all keys in path
+        const route = paths[Object.keys(paths)[0]];
+        const postOrGet = route[Object.keys(route)[0]]
+        const content = postOrGet["requestBody"]["content"];
+        const bodyTypeInJSON = Object.keys(content)[0];
+        const bodyType = bodyTypesValues[bodyTypeInJSON];
+        console.log(bodyType);
+        const responseContentType = Object.keys(postOrGet["responses"]["200"]["content"])[0]
+        console.log(responseContentType);
+        var responseType = responseTypesValues.json;
+        if (responseContentType.startsWith('image')) {
+            responseType = responseTypesValues.buffer;
+        }
+        if (getBool) return true;
+        return { bodyType, responseType };
+
+    } catch (error) {
+        console.log(error);
+        if (getBool) return error;
+        return { bodyType: bodyTypesValues['application/json'], responseType: responseTypesValues.json };
+    }
+}
 
 
-export { bigStringPrinter, removeFormatting, switchOriginalFileNamesToBuffers, replaceString, updateUrlsForBeingLocal, extractJson }
+
+export { bigStringPrinter, updateUrlsForBeingLocal, extractJson, parseOpenAPI, arrayOfFilesToFormData }

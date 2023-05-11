@@ -1,16 +1,15 @@
 if (process.env.NODE_ENV !== "production") {
     require('dotenv').config();
 }
-import express, { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
 import Admin from '../classes/admin';
 import CockRoachDB from '../classes/cockroach';
 import { Injectable } from '@nestjs/common';
 import { OpenAI } from "langchain/llms/openai";
-import MainApi from '../classes/mainApi';
-import multer from 'multer';
+import MainApi from '../classes/mainApi';;
 import { WeaviateStore } from "langchain/vectorstores/weaviate";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 import { apiDocs } from '../types/types';
+import { parseOpenAPI } from '../methods/helpers';
 import axios from 'axios';
 const weaviate = require('weaviate-ts-client');
 
@@ -19,7 +18,6 @@ export class BaseService {
     private Admin: Admin;
     private CockRoachDB: CockRoachDB;
     private vectorDB: WeaviateStore;
-    private upload: multer.Multer;
     private model: OpenAI;
     private isTesing: boolean;
 
@@ -32,9 +30,6 @@ export class BaseService {
         const client = (weaviate as any).client({
             scheme: process.env.WEAVIATE_SCHEME,
             host: process.env.WEAVIATE_HOST,
-            apiKey: new (weaviate as any).ApiKey(
-                process.env.WEAVIATE_API_KEY
-            ),
         });
 
         this.vectorDB = await WeaviateStore.fromExistingIndex(new OpenAIEmbeddings(), {
@@ -53,25 +48,24 @@ export class BaseService {
         this.Admin = new Admin(this.CockRoachDB, this.vectorDB);
     }
     public async base(query: string, files: any[]) {
+
         if (process.env.testingPython === 'true') {
             console.log('testing python');
             console.log(files[0]);
             const formData = new FormData();
-
             // Append the JSON data as a string
             // formData.append("data", JSON.stringify({ query: query }));
             if (files.length > 0) {
                 const file = files[0];
                 const blob = new Blob([file.buffer], { type: file.mimetype });
                 formData.append('image', blob, file.originalname);
-                console.log(blob)
+                // console.log(blob)
             }
-            console.log(formData);
-            const response = await fetch("http://127.0.0.1:5000/api/handLandmarksRecognition", {
-                method: 'POST',
+            const info = { method: 'POST' }
+            const response = await fetch("http://127.0.0.1:5000/api/objectDetector", {
+                ...info,
                 body: formData,
             });
-
             const responseJson = await response.json();
             console.log(responseJson);
             return responseJson;
@@ -86,36 +80,9 @@ export class BaseService {
     }
 
     public async test() {
-        const docs = await this.CockRoachDB.logAllDocs();
-        // console.log('here123');
-        // try {
-        //     const response = await axios({
-        //         url: 'https://www.googleapis.com/blogger/v3/blogs/5311709062758717144/posts/',
-        //         method: 'POST',
-        //         data: {
-        //             kind: 'blogger#post',
-        //             blog: { id: '5311709062758717144' },
-        //             title: 'Tea is tasty',
-        //             content: 'what a wonderful world we have that is team filled'
-        //         },
-        //         headers: {
-        //             'Content-Type': 'application/json',
-        //             Authorization: 'Bearer ya29.asdf0AWY7CknUZCXu48g0pI2u4_IMisNbEQZXs_-7ZPAzWsLjiIaGJYWGDQtR4NXz0iHBnDqtbmHH3ml0bc4ul-6xuZdkZp7hjBZBxSjspKHtUz6U5n4VVU3s3J96XzMGJvltHoOr9aAkijg0D3f1Ns6RA2alcHQuBgaCgYKATESARASFQG1tDrpeY_mRtYPX1NWoqh9us-6ug0165'
-        //         }
-        //     });
-        //     console.log('first')
-        //     console.log(response);
-        //     console.log(response.data);
-        // } catch (error) {
-        //     console.log('at error');
-        //     console.log(error);
-        //     if (error.response) {
-        //         console.log('real error');
-        //         console.log(error.response.data);
-        //         console.log(error.response.status);
-        //         console.log(error.response.headers);
-        //     }
-        // }
+        const doc = await this.CockRoachDB.getDocById('f95e80e0-d266-4374-8e9c-47a650a9e660');
+        const res = parseOpenAPI(doc.openapi)
+        console.log(res);
         return 'we are cool'
     }
 
@@ -136,10 +103,15 @@ export class BaseService {
         const client = (weaviate as any).client({
             scheme: process.env.WEAVIATE_SCHEME,
             host: process.env.WEAVIATE_HOST,
-            apiKey: new (weaviate as any).ApiKey(
-                process.env.WEAVIATE_API_KEY
-            ),
         });
+        // const client = (weaviate as any).client({
+        //     scheme: process.env.WEAVIATE_SCHEME,
+        //     host: process.env.WEAVIATE_HOST,
+        //     apiKey: new (weaviate as any).ApiKey(
+        //         process.env.WEAVIATE_API_KEY
+        //     ),
+        // });
+
 
         await WeaviateStore.fromTexts(
             docDescriptions,
@@ -147,7 +119,7 @@ export class BaseService {
             new OpenAIEmbeddings(),
             {
                 client,
-                indexName: "Llmtoolsaicom",
+                indexName: "Llmtools",
                 textKey: "text",
                 metadataKeys: ["notid"],
             }

@@ -1,4 +1,3 @@
-console.log('here123');
 
 var docs1 = 'info:\n' +
     '  title: Faces all-mpnet-base-v2\n' +
@@ -274,4 +273,69 @@ var docs3 = '{\n' +
     docs3 = docs3.replace(/['+]/g, '');
 
 
-export { docs1, docs2, docs3 }
+var doc4FilesObjectDetection = '{\n' +
+    '  "openapi": "3.0.0",\n' +
+    '  "info": {\n' +
+    '    "title": "LLM-Py-Tools API",\n' +
+    '    "version": "1.0.0",\n' +
+    '    "description": "Given an image as an input, all objects will be detected and a bounding box will be returned for them."\n' +
+    '  },\n' +
+    '  "servers": [\n' +
+    '    {\n' +
+    '      "url": "https://llm-py-tools.up.railway.app"\n' +
+    '    }\n' +
+    '  ],\n' +
+    '  "paths": {\n' +
+    '    "/api/objectDetector": {\n' +
+    '      "post": {\n' +
+    '        "summary": "Apply Canny edge detection to an image",\n' +
+    '        "requestBody": {\n' +
+    '          "required": true,\n' +
+    '          "content": {\n' +
+    '            "multipart/form-data": {\n' +
+    '              "schema": {\n' +
+    '                "type": "object",\n' +
+    '                "properties": {\n' +
+    '                  "image": {\n' +
+    '                    "type": "string",\n' +
+    '                    "format": "binary",\n' +
+    '                    "description": "Image file to be processed"\n' +
+    '                  }\n' +
+    '                },\n' +
+    '                "required": [\n' +
+    '                  "image"\n' +
+    '                ]\n' +
+    '              }\n' +
+    '            }\n' +
+    '          }\n' +
+    '        },\n' +
+    '        "responses": {\n' +
+    '          "200": {\n' +
+    '            "description": "Image processed successfully",\n' +
+    '            "content": {\n' +
+    '              "image/jpeg": {\n' +
+    '                "schema": {\n' +
+    '                  "type": "string",\n' +
+    '                  "format": "binary"\n' +
+    '                }\n' +
+    '              }\n' +
+    '            },\n' +
+    '            "headers": {\n' +
+    '              "Content-Disposition": {\n' +
+    '                "schema": {\n' +
+    '                  "type": "string"\n' +
+    '                },\n' +
+    '                "description": "Indicates attachment file and its download name"\n' +
+    '              }\n' +
+    '            }\n' +
+    '          }\n' +
+    '        }\n' +
+    '      }\n' +
+    '    }\n' +
+    '  }\n' +
+    '}\n'
+
+doc4FilesObjectDetection = doc4FilesObjectDetection.replace(/['+]/g, '');
+
+
+export { docs1, docs2, docs3, doc4FilesObjectDetection }

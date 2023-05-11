@@ -7,5 +7,12 @@ export interface apiDocs {
     websiteUrl: string;
 }
 
+export interface checkForRequiredFieldsJSON {
+    "CanPass": string,
+    "NextSteps": string,
+    "Logic"?: string
+}
+
+
 
 

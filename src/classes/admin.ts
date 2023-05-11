@@ -1,7 +1,8 @@
-const { Client } = require("pg");
 import { apiDocs } from '../types/types';
 import CockRoachDB from "./cockroach";
 import { WeaviateStore } from "langchain/vectorstores/weaviate";
+import { parseOpenAPI } from "../methods/helpers";
+
 
 export default class Admin {
     sqlDB: CockRoachDB;
@@ -12,12 +13,22 @@ export default class Admin {
     }
 
     async addNewDoc(params: apiDocs): Promise<string> {
-        const doc = {
+        const doc: apiDocs = {
             name: params.name, description: params.description.trim().replace(/\n+$/, ''),
             openapi: params.openapi, baseurl: params.baseurl,
             websiteUrl: params.websiteUrl, auth: (params.auth) ? params.auth : false
         };
-        // await this.sqlDB.updateDocById('22855f4f-5e65-41a8-a3bf-7672512249fe', doc);
+        // const myDoc = await this.sqlDB.getDocById('f95e80e0-d266-4374-8e9c-47a650a9e660');
+        // console.log(myDoc);
+        // return
+        const isValid = parseOpenAPI(doc.openapi, true);
+        if (typeof isValid !== 'boolean') {
+            //@ts-ignore
+            return 'ERROR adding: ' + isValid;
+        }
+
+        // await this.sqlDB.updateDocById('f95e80e0-d266-4374-8e9c-47a650a9e660', doc);
+        // return 'done';
         if (!doc.description) {
             return 'No description';
         }
