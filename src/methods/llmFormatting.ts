@@ -16,9 +16,6 @@ const formatFunctionMatchQueryAndDocsToApi = (text: string): boolean => {
             return false;
         }
         //check if there is either a data of FormData in json
-        if (!json["data"] && !json["FormData"]) {
-            return false;
-        }
     } catch (e) {
         return false;
     }

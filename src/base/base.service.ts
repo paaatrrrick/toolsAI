@@ -34,7 +34,7 @@ export class BaseService {
 
         this.vectorDB = await WeaviateStore.fromExistingIndex(new OpenAIEmbeddings(), {
             client,
-            indexName: "Llmtoolsaicom",
+            indexName: "Llmtools",
             metadataKeys: ["notid"],
         });
 
@@ -80,9 +80,11 @@ export class BaseService {
     }
 
     public async test() {
-        const doc = await this.CockRoachDB.getDocById('f95e80e0-d266-4374-8e9c-47a650a9e660');
-        const res = parseOpenAPI(doc.openapi)
-        console.log(res);
+        // const doc = await this.CockRoachDB.getDocById('f95e80e0-d266-4374-8e9c-47a650a9e660');
+        // const res = parseOpenAPI(doc.openapi)
+        // console.log(res);
+        const response = await this.vectorDB.similaritySearchWithScore("how is kanye doing", 10);
+        console.log(response);
         return 'we are cool'
     }
 

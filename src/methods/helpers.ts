@@ -118,7 +118,6 @@ function parseOpenAPI(openAPI: string, getBool = false as boolean): parseOpenAPI
         return { bodyType, responseType };
 
     } catch (error) {
-        console.log(error);
         if (getBool) return error;
         return { bodyType: bodyTypesValues['application/json'], responseType: responseTypesValues.json };
     }

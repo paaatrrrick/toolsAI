@@ -201,9 +201,9 @@ export default class MainApi {
         console.log(apiJSON)
         console.log(FormData);
         try {
+            const url = apiJSON["url"];
+            delete apiJSON["url"];
             if (FormData) {
-                const url = apiJSON["url"];
-                delete apiJSON["url"];
                 const response = await fetch(url, {
                     ...apiJSON,
                     body: FormData,
@@ -212,7 +212,9 @@ export default class MainApi {
                 console.log(blob);
                 return blob;
             } else {
-                const response = await fetch(apiJSON);
+                const response = await fetch(url, {
+                    ...apiJSON,
+                });
                 const data = response.json();
                 console.log(data);
                 return data;
