@@ -1,19 +1,13 @@
-const { url } = require("inspector");
 
-// const response = fetch(data['url'], {
-//     method: data['method'],
-// }).then((res) => {
-//     const data = res.json()
-//     console.log(data);
-// })
-
-const hitIt = async () => {
-    const data = { url: 'https://api.chucknorris.io/jokes/random', method: 'GET' }
-    const url = data['url'];
-    delete data['url'];
-    const response = await fetch(url, { ...data });
-    const d = await response.json()
-    console.log(d);
+const data = async () => {
+    const query = 'What is a chuck norris joke?'
+    response = await fetch("http://www.llm-tools.com/base", {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: query }),
+    });
+    const responseData = await response.text();
+    console.log(responseData);
 }
 
-hitIt();
+data();

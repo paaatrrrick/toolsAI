@@ -18,7 +18,7 @@ export class BaseService {
     private Admin: Admin;
     private CockRoachDB: CockRoachDB;
     private vectorDB: WeaviateStore;
-    private model: OpenAI;
+    // private model: OpenAI;
     private isTesing: boolean;
 
 
@@ -43,7 +43,7 @@ export class BaseService {
         //     console.log(res[0]);
         // }
         this.isTesing = process.env.isTesting === 'true';
-        this.model = new OpenAI({ openAIApiKey: process.env.OPENAI_API_KEY, temperature: 0 });
+        // this.model = new OpenAI({ openAIApiKey: process.env.OPENAI_API_KEY, temperature: 0 });
         this.CockRoachDB = new CockRoachDB(process.env.cock_db_url);
         this.Admin = new Admin(this.CockRoachDB, this.vectorDB);
     }
@@ -83,9 +83,9 @@ export class BaseService {
         // const doc = await this.CockRoachDB.getDocById('f95e80e0-d266-4374-8e9c-47a650a9e660');
         // const res = parseOpenAPI(doc.openapi)
         // console.log(res);
-        const response = await this.vectorDB.similaritySearchWithScore("how is kanye doing", 10);
-        console.log(response);
-        return 'we are cool'
+        // const response = await this.vectorDB.similaritySearchWithScore("how is kanye doing", 10);
+        // console.log(response);
+        // return 'we are cool'
     }
 
     public async resetVectorDB() {
@@ -115,26 +115,26 @@ export class BaseService {
         // });
 
 
-        await WeaviateStore.fromTexts(
-            docDescriptions,
-            docNotIds,
-            new OpenAIEmbeddings(),
-            {
-                client,
-                indexName: "Llmtools",
-                textKey: "text",
-                metadataKeys: ["notid"],
-            }
-        );
+        // await WeaviateStore.fromTexts(
+        //     docDescriptions,
+        //     docNotIds,
+        //     new OpenAIEmbeddings(),
+        //     {
+        //         client,
+        //         indexName: "Llmtools",
+        //         textKey: "text",
+        //         metadataKeys: ["notid"],
+        //     }
+        // );
 
-        const vectorDB = await WeaviateStore.fromExistingIndex(new OpenAIEmbeddings(), {
-            client,
-            indexName: "Llmtoolsaicom",
-            metadataKeys: ["notid"],
-        });
-        const response = await vectorDB.similaritySearchWithScore("how is kanye doing", 1);
-        console.log(response);
-        console.log('test');
+        // const vectorDB = await WeaviateStore.fromExistingIndex(new OpenAIEmbeddings(), {
+        //     client,
+        //     indexName: "Llmtools",
+        //     metadataKeys: ["notid"],
+        // });
+        // const response = await vectorDB.similaritySearchWithScore("how is kanye doing", 1);
+        // console.log(response);
+        // console.log('test');
 
     }
 
