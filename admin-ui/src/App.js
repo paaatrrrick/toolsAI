@@ -31,7 +31,7 @@ function App() {
       body: JSON.stringify(data),
     };
 
-    const response = await fetch('http://localhost:3000/base/add', requestOptions);
+    const response = await fetch('http://localhost:8080/base/add', requestOptions);
     const responseData = await response.text();
 
     setResponse(responseData);
@@ -47,7 +47,7 @@ function App() {
     let response = null;
     if (files.length === 0) {
       console.log("no files");
-      response = await fetch("http://localhost:3000/base", {
+      response = await fetch("http://localhost:8080/base", {
         method: "POST",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: query }),
@@ -63,7 +63,7 @@ function App() {
       //   console.log(pair[0]);
       //   console.log(pair[1]);
       // }
-      response = await fetch("http://localhost:3000/base/upload", {
+      response = await fetch("http://localhost:8080/base/upload", {
         method: "POST",
         body: formData,
       });

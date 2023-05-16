@@ -88,10 +88,10 @@ function extractJson(json: string): string {
 }
 
 function updateUrlsForBeingLocal(json: string): string {
-    json = replaceString(json, "https://tools-llm", "http://localhost:3000")
-    json = replaceString(json, "http://tools-llm", "http://localhost:3000")
-    json = replaceString(json, "https://www.tools-llm", "http://localhost:3000")
-    json = replaceString(json, "http://www.tools-llm", "http://localhost:3000")
+    json = replaceString(json, "https://tools-llm", "http://localhost:8080")
+    json = replaceString(json, "http://tools-llm", "http://localhost:8080")
+    json = replaceString(json, "https://www.tools-llm", "http://localhost:8080")
+    json = replaceString(json, "http://www.tools-llm", "http://localhost:8080")
     json = replaceString(json, "https://llm-py-tools.up.railway.app", "http://127.0.0.1:5000")
     return json;
 }
