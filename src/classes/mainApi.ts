@@ -112,7 +112,12 @@ export default class MainApi {
             const fileNamesString = (this.originalFileNames.length > 0) ? ` FILES: ${this.originalFileNames.join(', ')}` : '';
             const prompt = this.prompt + fileNamesString;
             console.log(prompt);
-            const messages = [...checkForRequiredFieldsPromptsChatMessages, new HumanChatMessage(`OPENAPI DOCS: ${this.apiDocs.openapi}\n\nREQUEST: ${prompt}`)]
+            var messages: any[] = [];
+            if (this.apiDocs.auth !== 'None' && this.apiDocs.auth !== '' && this.apiDocs.auth) {
+                messages = [...checkForRequiredFieldsPromptsChatMessages, new HumanChatMessage(`OPENAPI DOCS: ${this.apiDocs.openapi}\n\nREQUEST: ${prompt} \n\n OAuth: The following is NOT an OAuth token, it is a keyword to share with users when they're missing an OAuth token in the request. ${this.apiDocs.auth}`)]
+            } else {
+                messages = [...checkForRequiredFieldsPromptsChatMessages, new HumanChatMessage(`OPENAPI DOCS: ${this.apiDocs.openapi}\n\nREQUEST: ${prompt}`)]
+            }
             const answer = await model.call(messages);
             return answer.text;
         }

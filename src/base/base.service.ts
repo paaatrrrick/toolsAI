@@ -86,6 +86,7 @@ export class BaseService {
         // const response = await this.vectorDB.similaritySearchWithScore("how is kanye doing", 10);
         // console.log(response);
         // return 'we are cool'
+        this.resetVectorDB();
     }
 
     public async resetVectorDB() {
@@ -102,10 +103,10 @@ export class BaseService {
         console.log(docDescriptions);
         console.log(docNotIds);
 
-        const client = (weaviate as any).client({
-            scheme: process.env.WEAVIATE_SCHEME,
-            host: process.env.WEAVIATE_HOST,
-        });
+        // const client = (weaviate as any).client({
+        //     scheme: process.env.WEAVIATE_SCHEME,
+        //     host: process.env.WEAVIATE_HOST,
+        // });
         // const client = (weaviate as any).client({
         //     scheme: process.env.WEAVIATE_SCHEME,
         //     host: process.env.WEAVIATE_HOST,
@@ -113,7 +114,6 @@ export class BaseService {
         //         process.env.WEAVIATE_API_KEY
         //     ),
         // });
-
 
         // await WeaviateStore.fromTexts(
         //     docDescriptions,
