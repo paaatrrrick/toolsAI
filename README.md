@@ -1,14 +1,22 @@
 # Tools-LLM
 
-"Connecting AI agents to the world"
 
+## An Open Source version of OpenAI functions
+Tools-LLM allows you to build a database of LLM-callable functions. You can upload numerous [OpenAPI](https://www.openapis.org/) valid descriptions of an API endpoint. From there, you (designed for an LLM) can query this API through natural language.
+<br/>
+<br/>
+For example, if you add documentation to an API that performs sentiment analysis on a string. Calling Tools-LLM with the query, "What is the sentiment analysis of the sentence: `How are you?`" will be formatted into an API call to request your previous endpoint. Tools-LLM would then return the JSON: `{"sentiment":0.85}`.
+<br/>
+<br/>
+If the API calls fail, there is no relevant API found, or required information is missing, a natural language response will be returned such as: "You're missing a sentence to perform sentiment analysis on"
 
-## So, what is this?
-We are an API for LLM to access APIs. Make an API call with a natural language query of anything you want to do: i.e "make a picture of a cat", "what is my current credit card balance" or "book a flight to New York City". We will then find an API endpoint to call on your behalf and reutn the results to you.
-
+## How it works
+\
+![Tools-LLM-Graph](https://github.com/paaatrrrick/toolsAI/assets/88113528/2574a914-1858-422f-a6c1-3f3cc49dafb2)
+\
 
 ## Technologies Used:
-GPT-3, Langchain, Weaviate, Typescript, NodeJS, Expressl, and cockroachDB
+GPT-3.5, Langchain, Weaviate, Typescript, NodeJS, Express, and CockroachDB
 
 
 
